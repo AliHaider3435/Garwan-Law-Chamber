@@ -46,7 +46,7 @@ export default function Shell({ children }: { children: ReactNode }) {
             key={href}
             href={href}
             className={'nav' + (path.startsWith(href) ? ' on' : '')}
-            style={{ textDecoration: 'none' }}
+            style={{ textDecoration: 'none', color: '#ffffff' }}
           >
             {label}
           </Link>
