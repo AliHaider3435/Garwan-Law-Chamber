@@ -201,7 +201,7 @@ export const liveBackend: Backend = {
       db().from('reminder_log').select('*').order('sent_at', { ascending: false }).limit(15),
       db().from('chamber_users').select('*').order('created_at', { ascending: true }),
     ]);
-    fail(c.error); fail(a.error); fail(s.error); fail(l.error);
+    fail(c.error); fail(a.error); fail(s.error); fail(l.error); fail(u.error);
     const usersList: User[] = (u.data ?? []).map((x: any) => ({
       id: x.id,
       username: x.username,
@@ -216,7 +216,7 @@ export const liveBackend: Backend = {
     return {
       cases: (c.data ?? []).map(fromRow),
       assoc: (a.data ?? []).map((x: any) => ({ id: x.id, name: x.name, phone: x.phone ?? '' })),
-      users: usersList.length ? usersList : seed().users,
+      users: usersList,
       phone: (s.data as any)?.value ?? '',
       log: (l.data ?? []).map((x: any) => ({
         key: String(x.id), to: x.recipient ?? '', num: x.phone,

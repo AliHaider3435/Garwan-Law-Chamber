@@ -28,7 +28,7 @@ interface Store {
   deleteUser(id: string): Promise<string | null>;
   saveCase(c: Case): Promise<void>;
   deleteCase(id: string): Promise<void>;
-  addAssociate(name: string, phone: string): Promise<void>;
+  addAssociate(name: string, phone: string): Promise<Associate | null>;
   removeAssociate(id: string): Promise<void>;
   setPhone(p: string): Promise<void>;
   simulateSend(entries: LogEntry[]): Promise<void>;
@@ -75,19 +75,26 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setPhoneState(d.phone);
       setLog(d.log);
 
-      // Re-hydrate current user if set
+      // Re-hydrate current user if set — never fall back to another account
       const storedUid = typeof window !== 'undefined' ? localStorage.getItem(USER_KEY) : null;
       if (storedUid) {
         const found = d.users.find((u) => u.id === storedUid);
         if (found) {
           setCurrentUser(found);
           setAuthed(true);
+        } else {
+          setCurrentUser(null);
+          setAuthed(false);
         }
       } else if (typeof window !== 'undefined' && localStorage.getItem(AUTH_KEY) === '1') {
-        const defAdmin = d.users.find((u) => u.role === 'superadmin') || d.users[0] || null;
+        const defAdmin = d.users.find((u) => u.role === 'superadmin') || null;
         setCurrentUser(defAdmin);
-        if (defAdmin) localStorage.setItem(USER_KEY, defAdmin.id);
-        setAuthed(true);
+        if (defAdmin) {
+          localStorage.setItem(USER_KEY, defAdmin.id);
+          setAuthed(true);
+        } else {
+          setAuthed(false);
+        }
       }
     } catch (e) {
       toast('Could not load data: ' + (e as Error).message);
@@ -107,12 +114,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
         if (supabase) {
           const { data } = await supabase.auth.getSession();
-          const isSession = !!data.session;
-          setAuthed(isSession);
-          if (isSession) {
-            const email = data.session?.user?.email?.toLowerCase();
-            const u = d.users.find((x) => x.email.toLowerCase() === email) || d.users[0];
-            setCurrentUser(u || null);
+          const email = data.session?.user?.email?.toLowerCase();
+          const u = email ? d.users.find((x) => x.email.toLowerCase() === email) : undefined;
+          if (data.session && u) {
+            setCurrentUser(u);
+            setAuthed(true);
+          } else {
+            if (data.session) await supabase.auth.signOut();
+            setCurrentUser(null);
+            setAuthed(false);
           }
         } else {
           const storedUid = localStorage.getItem(USER_KEY);
@@ -121,11 +131,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             if (u) {
               setCurrentUser(u);
               setAuthed(true);
+            } else {
+              setCurrentUser(null);
+              setAuthed(false);
             }
           } else if (localStorage.getItem(AUTH_KEY) === '1') {
-            const defAdmin = d.users.find((u) => u.role === 'superadmin') || d.users[0] || null;
+            const defAdmin = d.users.find((u) => u.role === 'superadmin') || null;
             setCurrentUser(defAdmin);
-            setAuthed(true);
+            setAuthed(!!defAdmin);
           }
         }
       } catch (e) {
@@ -180,8 +193,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (supabase) {
         const { error } = await supabase.auth.signInWithPassword({ email: identifier, password });
         if (error) return error.message;
-        const matched = userPool.find((u) => u.email.toLowerCase() === idTrim || u.username.toLowerCase() === idTrim) || userPool[0];
-        setCurrentUser(matched || null);
+        const matched = userPool.find(
+          (u) => u.email.toLowerCase() === idTrim || u.username.toLowerCase() === idTrim
+        );
+        if (!matched) {
+          await supabase.auth.signOut();
+          return 'No chamber user found with that username or email.';
+        }
+        setCurrentUser(matched);
         setAuthed(true);
         return null;
       }
@@ -341,11 +360,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       toast('Case deleted');
     }),
 
-    addAssociate: (name, ph) => run(async () => {
-      const a = await backend.addAssociate({ name, phone: ph });
-      setAssoc((p) => [...p, a]);
-      toast('Associate added');
-    }),
+    async addAssociate(name, ph) {
+      try {
+        const a = await backend.addAssociate({ name, phone: ph });
+        setAssoc((p) => [...p, a]);
+        toast('Associate added');
+        return a;
+      } catch (e) {
+        toast((e as Error).message);
+        return null;
+      }
+    },
 
     removeAssociate: (id) => run(async () => {
       await backend.removeAssociate(id);

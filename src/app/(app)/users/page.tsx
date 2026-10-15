@@ -41,37 +41,36 @@ export default function UsersPage() {
     }
 
     setBusy(true);
-    let linkedAssocId = assocId;
+    try {
+      let linkedAssocId = assocId;
 
-    // If associate role and auto-create associate is checked or no associate selected
-    if (role === 'associate') {
-      if (autoCreateAssoc || !linkedAssocId) {
-        await addAssociate(name.trim(), '');
-        // Fetch latest associates
-        const updatedAssoc = assoc.find((a) => a.name.toLowerCase() === name.trim().toLowerCase());
-        if (updatedAssoc) {
-          linkedAssocId = updatedAssoc.id;
+      if (role === 'associate') {
+        if (autoCreateAssoc || !linkedAssocId) {
+          const created = await addAssociate(name.trim(), '');
+          if (!created) return;
+          linkedAssocId = created.id;
         }
       }
-    }
 
-    const err = await addUser({
-      username: username.trim(),
-      email: email.trim() || `${username.trim()}@garwanlaw.com`,
-      password: password.trim(),
-      name: name.trim(),
-      role,
-      associateId: role === 'associate' ? linkedAssocId || undefined : undefined,
-    });
+      const err = await addUser({
+        username: username.trim(),
+        email: email.trim() || `${username.trim()}@garwanlaw.com`,
+        password: password.trim(),
+        name: name.trim(),
+        role,
+        associateId: role === 'associate' ? linkedAssocId || undefined : undefined,
+      });
 
-    setBusy(false);
-    if (!err) {
-      setUsername('');
-      setName('');
-      setEmail('');
-      setPassword('');
-      setAssocId('');
-      setAutoCreateAssoc(false);
+      if (!err) {
+        setUsername('');
+        setName('');
+        setEmail('');
+        setPassword('');
+        setAssocId('');
+        setAutoCreateAssoc(false);
+      }
+    } finally {
+      setBusy(false);
     }
   }
 
