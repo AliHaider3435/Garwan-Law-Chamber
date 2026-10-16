@@ -19,7 +19,7 @@ export default function Dashboard() {
     by[k] = (by[k] || 0) + 1;
   });
 
-  // Sort by count descending so Acquitted (2), Bail granted (1), Sentence reduced (1)
+  // Sort by count descending so the most common outcomes appear first.
   const outcomeEntries = Object.entries(by).sort((a, b) => b[1] - a[1]);
 
   const upcoming = active

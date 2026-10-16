@@ -64,7 +64,7 @@ create table cases (
   status text not null default 'active' check (status in ('active','decided')),
   next_hearing date,          -- active cases
   decided_on date,            -- decided cases
-  outcome text,               -- Acquitted, Convicted, Sentence reduced, Bail granted, Dismissed, Compromise
+  outcome text,               -- Acquitted, Convicted, Bail granted, Dismissed, Compromise
   created_at timestamptz default now()
 );
 

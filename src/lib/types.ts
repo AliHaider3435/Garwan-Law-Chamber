@@ -55,7 +55,7 @@ export interface ChamberData {
   log: LogEntry[];
 }
 
-export const OUTCOMES = ['Acquitted', 'Bail granted', 'Sentence reduced', 'Convicted', 'Dismissed', 'Compromise'];
+export const OUTCOMES = ['Acquitted', 'Bail granted', 'Convicted', 'Dismissed', 'Compromise'];
 export const CASE_TYPES = ['Murder (302 PPC)', 'Narcotics (CNSA)', 'Bail application', 'Criminal appeal', 'Revision', 'Other'];
 export const STAGES = ['Notices', 'Evidence', 'Arguments', 'Judgment reserved', 'Bail hearing', 'Other'];
 

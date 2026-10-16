@@ -91,10 +91,10 @@ function seed(): Data {
       mk('State v/s Bilal Ahmad', 'Sessions Court, Multan', 'Ahmad Family', '03217654321', 'Narcotics (CNSA)', 'Arguments', 7, ['a1', 'a2']),
       mk('State v/s Imran Shah', 'Sessions Court, Multan', 'Shah Family', '03111234567', 'Murder (302 PPC)', 'Evidence', 10, ['a1']),
       mk('Rukhsana Bibi v/s State', 'LHC, Multan Bench', 'Rukhsana Bibi', '', 'Bail application', 'Bail hearing', 14, []),
-      // Decided cases (4 decided: Acquitted 2, Bail granted 1, Sentence reduced 1)
+      // Decided cases (4 decided: Acquitted 2, Bail granted 1, Convicted 1)
       mk('State v/s Tariq Mehmood', 'Sessions Court, Multan', 'Mehmood Family', '', 'Murder (302 PPC)', 'Judgment reserved', 0, ['a1'], -30, 'Acquitted'),
       mk('State v/s Saeed Khan', 'Sessions Court, Multan', 'Khan Family', '', 'Bail application', 'Bail hearing', 0, [], -12, 'Bail granted'),
-      mk('State v/s Zahid Iqbal', 'LHC, Multan Bench', 'Iqbal Family', '', 'Criminal appeal', 'Arguments', 0, ['a2'], -60, 'Sentence reduced'),
+      mk('State v/s Zahid Iqbal', 'LHC, Multan Bench', 'Iqbal Family', '', 'Criminal appeal', 'Arguments', 0, ['a2'], -60, 'Convicted'),
       mk('Asif Raza v/s State', 'Sessions Court, Multan', 'Asif Raza', '', 'Narcotics (CNSA)', 'Evidence', 0, [], -90, 'Acquitted'),
     ],
   };
@@ -105,8 +105,16 @@ function read(): Data {
     const s = localStorage.getItem(KEY);
     if (s) {
       const data = JSON.parse(s) as Data;
+      let migratedOutcome = false;
+      data.cases = (data.cases ?? []).map((c) => {
+        if (c.outcome?.trim().toLowerCase() !== 'sentence reduced') return c;
+        migratedOutcome = true;
+        return { ...c, outcome: 'Convicted' };
+      });
       if (!data.users || data.users.length === 0) {
         data.users = seed().users;
+        write(data);
+      } else if (migratedOutcome) {
         write(data);
       }
       return data;
