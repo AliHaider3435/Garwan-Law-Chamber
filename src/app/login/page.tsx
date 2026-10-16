@@ -2,7 +2,9 @@
 
 import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { useStore } from '@/lib/store';
+import WhatsAppLink from '@/components/WhatsAppLink';
 
 export default function Login() {
   const { ready, authed, signIn } = useStore();
@@ -28,6 +30,14 @@ export default function Login() {
   return (
     <div className="lg">
       <form className="pn" onSubmit={submit}>
+        <Image
+          className="login-brand-logo"
+          src="/tech-agenz-logo.png"
+          alt="Tech Agenz"
+          width={542}
+          height={363}
+          priority
+        />
         <div className="mono">G</div>
         <h1>Garwan Law Chamber</h1>
         <p className="mut" style={{ marginTop: 0 }}>
@@ -66,6 +76,7 @@ export default function Login() {
           {busy ? 'Signing in...' : 'Sign in'}
         </button>
       </form>
+      <WhatsAppLink className="whatsapp-login" />
     </div>
   );
 }

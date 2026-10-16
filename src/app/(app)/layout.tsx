@@ -6,6 +6,8 @@ import { ReactNode, useEffect, useState } from 'react';
 import { useStore } from '@/lib/store';
 import CaseDialog from '@/components/CaseDialog';
 import ChangePasswordDialog from '@/components/ChangePasswordDialog';
+import Image from 'next/image';
+import WhatsAppLink from '@/components/WhatsAppLink';
 
 const BASE_NAV = [
   ['/dashboard', 'Dashboard'],
@@ -79,16 +81,7 @@ export default function Shell({ children }: { children: ReactNode }) {
                 <span>{currentUser.name}</span>
               </span>
             )}
-            <a
-              className="ghost sm"
-              href="https://wa.me/923008761878?text=Hello%2C%20I%20would%20like%20to%20contact%20Garwan%20Law%20Chamber."
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Contact Garwan Law Chamber on WhatsApp"
-              style={{ textDecoration: 'none' }}
-            >
-              WhatsApp
-            </a>
+            <WhatsAppLink />
             <button className="ghost sm" onClick={openPassDlg} title="Change your password">
               Change password
             </button>
@@ -98,6 +91,10 @@ export default function Shell({ children }: { children: ReactNode }) {
           </div>
         </header>
         <main>{children}</main>
+        <footer className="app-footer">
+          <span>Developed by</span>
+          <Image src="/tech-agenz-logo.png" alt="Tech Agenz" width={92} height={62} />
+        </footer>
       </div>
       <CaseDialog />
       <ChangePasswordDialog />

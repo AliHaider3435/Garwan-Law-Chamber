@@ -15,7 +15,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .side.open{transform:none}
 .scrim{position:fixed;inset:0;background:#0008;z-index:20;display:none}
 .side.open+.scrim{display:block}
-.col{flex:1;min-width:0}
+.col{flex:1;min-width:0;display:flex;flex-direction:column;min-height:100vh}
 @media(min-width:900px){.side{transform:none}.scrim{display:none!important}.col{margin-left:256px}#menu{display:none}}
 .br{padding:0 22px 20px;border-bottom:1px solid #ffffff26;margin-bottom:12px}
 .mono{width:44px;height:44px;background:var(--bur);border:2px double var(--brass);display:grid;place-items:center;font:700 26px var(--serif);color:#fff;margin-bottom:12px}
@@ -29,8 +29,14 @@ button{font:inherit;color:inherit;cursor:pointer}
 .top{position:sticky;top:env(safe-area-inset-top,0px);z-index:10;display:flex;align-items:center;gap:12px;padding:14px 20px 10px;background:var(--bg);border-bottom:4px double var(--brass);flex-wrap:wrap}
 .top h1{font-size:30px;flex:1;min-width:0;color:var(--ink)}
 .top-actions{display:flex;align-items:center;gap:8px;margin-left:auto;flex-wrap:wrap;justify-content:flex-end}
+.whatsapp-link{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;flex:0 0 40px;border:1px solid #25d366;border-radius:50%;color:#168b42;background:var(--card);text-decoration:none}
+.whatsapp-link svg{width:24px;height:24px}
+.whatsapp-link:hover{background:#25d366;color:#fff}
 #menu,.ghost{background:none;border:1px solid var(--ink);border-radius:2px;padding:7px 14px}
 main{padding:20px;max-width:960px;margin:0 auto}
+.col>main{flex:1;width:100%}
+.app-footer{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:4px 20px calc(12px + env(safe-area-inset-bottom,0px));color:var(--mut);font-size:13px}
+.app-footer img{width:92px;height:auto}
 .pn{background:var(--card);border:1px solid var(--line);border-top:3px solid var(--navy);margin-bottom:20px}
 .pn>h2{padding:14px 16px 6px}
 .pp{padding:16px}.pad{padding:12px 16px}
@@ -82,9 +88,11 @@ dialog::backdrop{background:#0009}
 .msg small{display:inline;margin-left:8px}
 .lg{min-height:100vh;display:grid;place-items:center;padding:16px;background:var(--navy)}
 .lg .pn{width:min(400px,100%);border-top-color:var(--bur);padding:26px}
+.login-brand-logo{display:block;width:150px;height:100px;object-fit:contain;margin:0 auto 14px}
+.whatsapp-login{position:fixed;right:20px;bottom:calc(20px + env(safe-area-inset-bottom,0px));width:52px;height:52px;background:#fff}
+.whatsapp-login svg{width:32px;height:32px}
 .lg h1{font-size:32px;margin:14px 0 4px}
 #toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 20px);transform:translate(-50%,20px);background:var(--navy);color:#fff;border-left:4px solid var(--brass);padding:10px 18px;opacity:0;pointer-events:none;transition:.2s;z-index:60}
 #toast.show{opacity:1;transform:translate(-50%,0)}
 .note{font-size:14px;color:var(--mut);border:1px dashed var(--brass);padding:8px 12px;margin-bottom:18px}
 .lnkbtn{display:inline-block}
-
