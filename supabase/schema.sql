@@ -108,3 +108,15 @@ create table if not exists chamber_backups (
 );
 
 alter table chamber_backups enable row level security;
+
+grant usage on schema public to service_role;
+grant select, insert, update, delete on
+  associates,
+  chamber_users,
+  cases,
+  case_associates,
+  settings,
+  reminder_log,
+  chamber_backups
+to service_role;
+grant usage, select on all sequences in schema public to service_role;

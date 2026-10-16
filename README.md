@@ -22,7 +22,7 @@ storage. This demo mode is disabled in production; configure the shared Supabase
    - `SESSION_SECRET` (a unique, randomly generated secret)
    - `INITIAL_ADMIN_SETUP_SECRET` (a temporary random secret of at least 32 characters)
 3. Deploy, then create the first Super Admin by sending a `POST` request to
-   `/api/auth/bootstrap` with `Authorization: Bearer <INITIAL_ADMIN_SETUP_SECRET>` and JSON fields
+   `/api/auth/bootstrap` with the header `Authorization: Bearer <your temporary setup secret>` and JSON fields
    `username`, `email`, `name`, and `password`. Choose a unique password of at least 12 characters.
    The database only permits this bootstrap once. Remove `INITIAL_ADMIN_SETUP_SECRET` from Vercel and redeploy
    immediately after setup.
