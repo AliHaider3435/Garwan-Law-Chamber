@@ -9,7 +9,6 @@ export default function UsersPage() {
   const { currentUser, users, assoc, addUser, deleteUser, updateUser, addAssociate, toast } = useStore();
   const router = useRouter();
 
-  const [showPasswords, setShowPasswords] = useState(true);
   const [username, setUsername] = useState('');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -39,6 +38,10 @@ export default function UsersPage() {
       toast('Please fill in username, name, and password.');
       return;
     }
+    if (password.trim().length < 12 || password.length > 256) {
+      toast('Passwords must be 12-256 characters long.');
+      return;
+    }
 
     setBusy(true);
     try {
@@ -55,7 +58,7 @@ export default function UsersPage() {
       const err = await addUser({
         username: username.trim(),
         email: email.trim() || `${username.trim()}@garwanlaw.com`,
-        password: password.trim(),
+        password,
         name: name.trim(),
         role,
         associateId: role === 'associate' ? linkedAssocId || undefined : undefined,
@@ -74,15 +77,15 @@ export default function UsersPage() {
     }
   }
 
-  function copyText(txt: string, label: string) {
-    navigator.clipboard.writeText(txt);
-    toast(`${label} copied to clipboard!`);
-  }
-
   async function savePasswordEdit(userId: string) {
     const userToEdit = users.find((u) => u.id === userId);
     if (!userToEdit || !editPass.trim()) return;
-    await updateUser({ ...userToEdit, password: editPass.trim() });
+    if (editPass.trim().length < 12 || editPass.length > 256) {
+      toast('Passwords must be 12-256 characters long.');
+      return;
+    }
+    const error = await updateUser({ ...userToEdit, password: editPass });
+    if (error) return;
     setEditingUserId(null);
     setEditPass('');
   }
@@ -92,15 +95,8 @@ export default function UsersPage() {
       {/* Overview Notice */}
       <div className="note" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
         <span>
-          <b>Super Admin Access:</b> You have full control over chamber accounts. You can inspect all usernames and passwords, assign cases to associates, and provision or revoke logins.
+          <b>Super Admin Access:</b> Manage chamber accounts, assign cases to associates, and reset passwords. Existing passwords are never displayed.
         </span>
-        <button
-          className="ghost sm"
-          type="button"
-          onClick={() => setShowPasswords(!showPasswords)}
-        >
-          {showPasswords ? 'Hide passwords' : 'Show passwords'}
-        </button>
       </div>
 
       {/* Provision new User Form */}
@@ -144,11 +140,14 @@ export default function UsersPage() {
             />
           </label>
           <label>
-            Login Password
+            Initial password
             <input
-              type="text"
+              type="password"
               required
-              placeholder="e.g. kamran123"
+              minLength={12}
+              maxLength={256}
+              autoComplete="new-password"
+              placeholder="12-256 characters"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
@@ -206,16 +205,17 @@ export default function UsersPage() {
       <div className="pn">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px 6px' }}>
           <h2>Chamber users & credentials ({users.length})</h2>
-          <span className="sm mut">All passwords visible to Super Admin</span>
+          <span className="sm mut">Passwords are hashed and never displayed</span>
         </div>
 
+        <div className="tbl-wrap">
         <table className="tb">
           <thead>
             <tr>
               <th>User</th>
               <th className="hm">Role</th>
               <th>Assigned Advocate</th>
-              <th>Password (Plaintext)</th>
+              <th>Password reset</th>
               <th style={{ textAlign: 'right' }}>Actions</th>
             </tr>
           </thead>
@@ -256,49 +256,31 @@ export default function UsersPage() {
                     {isEditing ? (
                       <div style={{ display: 'flex', gap: 6 }}>
                         <input
-                          type="text"
+                          type="password"
+                          autoComplete="new-password"
+                          minLength={12}
+                          maxLength={256}
+                          placeholder="New password"
                           value={editPass}
                           onChange={(e) => setEditPass(e.target.value)}
-                          style={{ padding: '4px 8px', width: 120, margin: 0 }}
+                          style={{ padding: '4px 8px', width: 150, margin: 0 }}
                         />
-                        <button className="pri sm" type="button" onClick={() => savePasswordEdit(u.id)}>Save</button>
+                        <button className="pri sm" type="button" disabled={editPass.trim().length < 12 || editPass.length > 256} onClick={() => savePasswordEdit(u.id)}>Save</button>
                         <button className="ghost sm" type="button" onClick={() => setEditingUserId(null)}>X</button>
                       </div>
                     ) : (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <code
-                          style={{
-                            background: 'var(--bg)',
-                            border: '1px solid var(--line)',
-                            padding: '3px 8px',
-                            borderRadius: 3,
-                            fontFamily: 'monospace',
-                            fontSize: 14,
-                            fontWeight: 600,
-                            letterSpacing: showPasswords ? 0 : 2,
-                          }}
-                        >
-                          {showPasswords ? u.password : '••••••••'}
-                        </code>
-                        <button
-                          type="button"
-                          className="ghost sm"
-                          style={{ padding: '2px 7px', fontSize: 11 }}
-                          onClick={() => copyText(u.password, `Password for ${u.username}`)}
-                          title="Copy password"
-                        >
-                          Copy
-                        </button>
+                        <span className="sm mut">Not shown</span>
                         <button
                           type="button"
                           className="lnk sm"
                           style={{ fontSize: 12 }}
                           onClick={() => {
                             setEditingUserId(u.id);
-                            setEditPass(u.password);
+                            setEditPass('');
                           }}
                         >
-                          Edit
+                          Reset
                         </button>
                       </div>
                     )}
@@ -328,6 +310,7 @@ export default function UsersPage() {
             })}
           </tbody>
         </table>
+        </div>
       </div>
     </>
   );

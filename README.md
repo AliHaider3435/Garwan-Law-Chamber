@@ -10,18 +10,27 @@ weekly cause list, associates, and SMS hearing reminders (sent the evening befor
     npm install
     npm run dev
 
-Open http://localhost:3000. With no Supabase keys the app runs in demo mode: any email and password signs in,
-and data is saved in the browser only.
+Open http://localhost:3000. Without Supabase configuration, local development uses sample accounts and browser-only
+storage. This demo mode is disabled in production; configure the shared Supabase database before deploying.
 
 ## 2. Go live with Supabase
 
-1. Create a project at supabase.com.
-2. SQL editor: paste and run `supabase/schema.sql`.
-3. Authentication > Users: add Mehtab's user (email + password). Turn off public sign-ups in Authentication settings.
-4. Copy `.env.example` to `.env.local` and fill in:
+1. Create a Supabase project and run `supabase/schema.sql` in its SQL editor.
+2. Add these environment variables in Vercel (and `.env.local` for local live-mode testing):
    - `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` (Project settings > API)
-   - `SUPABASE_SERVICE_ROLE_KEY` (server only, never expose it in the browser)
-5. Restart `npm run dev`. The demo notice disappears and everything is saved in the shared database.
+   - `SUPABASE_SERVICE_ROLE_KEY` (server only; never expose it in the browser)
+   - `SESSION_SECRET` (a unique, randomly generated secret)
+   - `INITIAL_ADMIN_SETUP_SECRET` (a temporary random secret of at least 32 characters)
+3. Deploy, then create the first Super Admin by sending a `POST` request to
+   `/api/auth/bootstrap` with `Authorization: Bearer <INITIAL_ADMIN_SETUP_SECRET>` and JSON fields
+   `username`, `email`, `name`, and `password`. Choose a unique password of at least 12 characters.
+   The database only permits this bootstrap once. Remove `INITIAL_ADMIN_SETUP_SECRET` from Vercel and redeploy
+   immediately after setup.
+4. Sign in with that account. New accounts and password resets are stored as scrypt hashes; password changes
+   revoke other active sessions. Live data is shared, and signed-in screens refresh from the server every 15 seconds.
+
+Do not use local demo mode for real client data. Keep the Supabase service-role key and setup secret private.
+A deployment using the Vercel-provided `*.vercel.app` address receives HTTPS automatically.
 
 ## 3. SMS reminders
 
@@ -34,9 +43,16 @@ and data is saved in the browser only.
 - `reminder_log` has a unique key per (case, hearing date, phone), so a rerun never sends the same SMS twice.
 - Test it by hand: `curl -H "Authorization: Bearer $CRON_SECRET" https://your-app.vercel.app/api/cron/send-reminders`
 
-## 4. Deploy
+## 4. Backups
 
-Push to GitHub, import the repo in Vercel, add the environment variables, deploy.
+The scheduled `/api/cron/backup` job stores snapshots in the same Supabase project; it is not an independent
+disaster-recovery backup. Enable Supabase's database backups for the selected plan and arrange an off-site copy
+before relying on this app for production case records. Test restoring a backup before launch.
+
+## 5. Deploy
+
+Connect the GitHub repository to Vercel, add the production environment variables, and deploy. Confirm the
+production build and sign-in after the first-admin setup.
 
 ## Project layout
 

@@ -70,7 +70,7 @@ export default function Shell({ children }: { children: ReactNode }) {
         <header className="top">
           <button id="menu" aria-label="Open menu" onClick={() => setOpen(true)}>Menu</button>
           <h1>{title}</h1>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginLeft: 'auto' }}>
+          <div className="top-actions">
             {currentUser && (
               <span className="sm mut hm" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span className={currentUser.role === 'superadmin' ? 'tag dec' : 'tag'}>
@@ -79,6 +79,16 @@ export default function Shell({ children }: { children: ReactNode }) {
                 <span>{currentUser.name}</span>
               </span>
             )}
+            <a
+              className="ghost sm"
+              href="https://wa.me/923008761878?text=Hello%2C%20I%20would%20like%20to%20contact%20Garwan%20Law%20Chamber."
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Contact Garwan Law Chamber on WhatsApp"
+              style={{ textDecoration: 'none' }}
+            >
+              WhatsApp
+            </a>
             <button className="ghost sm" onClick={openPassDlg} title="Change your password">
               Change password
             </button>

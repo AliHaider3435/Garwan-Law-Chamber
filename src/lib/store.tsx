@@ -2,7 +2,7 @@
 
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Associate, Case, LogEntry, User } from './types';
-import { backend, resetLocal, supabase } from './backend';
+import { LIVE, backend, resetLocal } from './backend';
 
 interface Store {
   ready: boolean;
@@ -75,7 +75,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setPhoneState(d.phone);
       setLog(d.log);
 
-      // Re-hydrate current user if set — never fall back to another account
+      if (LIVE) return;
+
       const storedUid = typeof window !== 'undefined' ? localStorage.getItem(USER_KEY) : null;
       if (storedUid) {
         const found = d.users.find((u) => u.id === storedUid);
@@ -101,30 +102,47 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   }, [toast]);
 
+  useEffect(() => {
+    if (!LIVE || !authed) return;
+    const interval = setInterval(() => { void refresh(); }, 15000);
+    return () => clearInterval(interval);
+  }, [authed, refresh]);
+
   // Session initialization
   useEffect(() => {
     async function init() {
       try {
-        const d = await backend.load();
-        setCases(d.cases);
-        setAssoc(d.assoc);
-        setUsers(d.users);
-        setPhoneState(d.phone);
-        setLog(d.log);
-
-        if (supabase) {
-          const { data } = await supabase.auth.getSession();
-          const email = data.session?.user?.email?.toLowerCase();
-          const u = email ? d.users.find((x) => x.email.toLowerCase() === email) : undefined;
-          if (data.session && u) {
-            setCurrentUser(u);
+        if (!LIVE && process.env.NODE_ENV === 'production') {
+          setReady(true);
+          return;
+        }
+        if (LIVE) {
+          const me = await fetch('/api/auth/me', { credentials: 'include' });
+          const body = await me.json().catch(() => ({ user: null }));
+          if (body.user) {
+            setCurrentUser(body.user);
             setAuthed(true);
+            try {
+              const live = await backend.load();
+              setCases(live.cases);
+              setAssoc(live.assoc);
+              setUsers(live.users);
+              setPhoneState(live.phone);
+              setLog(live.log);
+            } catch (e) {
+              console.error(e);
+            }
           } else {
-            if (data.session) await supabase.auth.signOut();
             setCurrentUser(null);
             setAuthed(false);
           }
         } else {
+          const d = await backend.load();
+          setCases(d.cases);
+          setAssoc(d.assoc);
+          setUsers(d.users);
+          setPhoneState(d.phone);
+          setLog(d.log);
           const storedUid = localStorage.getItem(USER_KEY);
           if (storedUid) {
             const u = d.users.find((x) => x.id === storedUid);
@@ -181,28 +199,30 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     passDlgOpen,
 
     async signIn(identifier: string, password: string) {
+      if (!LIVE && process.env.NODE_ENV === 'production') {
+        return 'Shared database is not configured. Contact the site administrator.';
+      }
+      if (LIVE) {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identifier, password }),
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) return body.error || 'Could not sign in.';
+        setCurrentUser(body.user);
+        setAuthed(true);
+        await refresh();
+        return null;
+      }
+
       const idTrim = identifier.trim().toLowerCase();
-      // Ensure users are loaded
       let userPool = users;
       if (!userPool.length) {
         const d = await backend.load();
         userPool = d.users;
         setUsers(d.users);
-      }
-
-      if (supabase) {
-        const { error } = await supabase.auth.signInWithPassword({ email: identifier, password });
-        if (error) return error.message;
-        const matched = userPool.find(
-          (u) => u.email.toLowerCase() === idTrim || u.username.toLowerCase() === idTrim
-        );
-        if (!matched) {
-          await supabase.auth.signOut();
-          return 'No chamber user found with that username or email.';
-        }
-        setCurrentUser(matched);
-        setAuthed(true);
-        return null;
       }
 
       const match = userPool.find(
@@ -228,7 +248,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     },
 
     async signOut() {
-      if (supabase) await supabase.auth.signOut();
+      if (LIVE) await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
       try {
         localStorage.removeItem(AUTH_KEY);
         localStorage.removeItem(USER_KEY);
@@ -255,16 +275,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
     async changePassword(newPass: string, oldPass?: string) {
       if (!currentUser) return 'Not signed in';
-      if (oldPass && oldPass !== currentUser.password) {
+      if (!LIVE && oldPass && oldPass !== currentUser.password) {
         return 'Current password does not match.';
       }
-      if (!newPass || newPass.trim().length < 4) {
-        return 'New password must be at least 4 characters.';
+      if (newPass.trim().length < 12 || newPass.length > 256) {
+        return 'New password must be 12-256 characters long.';
       }
 
       try {
-        await backend.updatePassword(currentUser.id, newPass);
-        const updated = { ...currentUser, password: newPass };
+        await backend.updatePassword(currentUser.id, newPass, oldPass);
+        const updated = LIVE ? currentUser : { ...currentUser, password: newPass };
         setCurrentUser(updated);
         setUsers((prev) => prev.map((u) => (u.id === currentUser.id ? updated : u)));
         toast('Password updated successfully');

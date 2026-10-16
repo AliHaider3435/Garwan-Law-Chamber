@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import CaseTable from '@/components/CaseTable';
 import { addDays, iso, today } from '@/lib/dates';
 import { useStore } from '@/lib/store';
@@ -32,12 +31,6 @@ export default function Dashboard() {
 
   return (
     <>
-      {!LIVE && (
-        <div className="note">
-          Demo version: data is saved in this browser only. The live version will use a shared database.
-        </div>
-      )}
-
       {currentUser?.role === 'associate' && (
         <div className="note" style={{ borderColor: 'var(--navy2)', background: 'var(--tag)' }}>
           <b>Associate Portal:</b> Logged in as <b>{currentUser.name}</b>. Only cases where you are an authorized advocate are shown.

@@ -31,8 +31,8 @@ export default function ChangePasswordDialog() {
     e.preventDefault();
     setError('');
 
-    if (newPass.length < 4) {
-      setError('Password must be at least 4 characters long.');
+    if (newPass.trim().length < 12 || newPass.length > 256) {
+      setError('Password must be 12-256 characters long.');
       return;
     }
     if (newPass !== confirmPass) {
@@ -82,10 +82,12 @@ export default function ChangePasswordDialog() {
             <input
               type="password"
               required
+              minLength={12}
+              maxLength={256}
               autoComplete="new-password"
               value={newPass}
               onChange={(e) => setNewPass(e.target.value)}
-              placeholder="Enter new password (min. 4 chars)"
+              placeholder="Enter new password (12-256 characters)"
             />
           </label>
 

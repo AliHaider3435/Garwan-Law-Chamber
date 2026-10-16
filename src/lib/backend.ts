@@ -1,22 +1,15 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { Associate, Case, LogEntry, User } from './types';
-import { fromRow, toRow } from './mapping';
+import { Associate, Case, ChamberData, LogEntry, User } from './types';
 import { addDays, iso } from './dates';
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-/** Supabase client. null means demo mode (data stays in this browser). */
+/** Present when a shared Supabase project URL is configured. */
 export const supabase: SupabaseClient | null = url && key ? createClient(url, key) : null;
-export const LIVE = !!supabase;
+export const LIVE = !!url;
 
-export interface Data {
-  cases: Case[];
-  assoc: Associate[];
-  users: User[];
-  phone: string;
-  log: LogEntry[];
-}
+export type Data = ChamberData;
 
 export interface Backend {
   load(): Promise<Data>;
@@ -28,7 +21,7 @@ export interface Backend {
   addLog(entries: LogEntry[]): Promise<void>;
   saveUser(u: User): Promise<User>;
   deleteUser(id: string): Promise<void>;
-  updatePassword(userId: string, newPass: string): Promise<void>;
+  updatePassword(userId: string, newPass: string, currentPass?: string): Promise<void>;
 }
 
 /* ---------------- Demo backend (localStorage) ---------------- */
@@ -186,112 +179,32 @@ export const localBackend: Backend = {
   },
 };
 
-/* ---------------- Live backend (Supabase) ---------------- */
+/* ---------------- Live backend (shared Supabase via server API) ---------------- */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-const db = () => supabase as SupabaseClient;
-const fail = (e: { message: string } | null) => { if (e) throw new Error(e.message); };
+async function api<T>(action: string, payload?: unknown): Promise<T> {
+  const r = await fetch('/api/chamber', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action, payload }),
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || 'Could not reach the shared database.');
+  return j.data as T;
+}
 
 export const liveBackend: Backend = {
-  async load() {
-    const [c, a, s, l, u] = await Promise.all([
-      db().from('cases').select('*, case_associates(associate_id)').order('created_at', { ascending: false }),
-      db().from('associates').select('*').order('name'),
-      db().from('settings').select('value').eq('key', 'advocate_phone').maybeSingle(),
-      db().from('reminder_log').select('*').order('sent_at', { ascending: false }).limit(15),
-      db().from('chamber_users').select('*').order('created_at', { ascending: true }),
-    ]);
-    fail(c.error); fail(a.error); fail(s.error); fail(l.error); fail(u.error);
-    const usersList: User[] = (u.data ?? []).map((x: any) => ({
-      id: x.id,
-      username: x.username,
-      email: x.email ?? '',
-      password: x.password,
-      name: x.name,
-      role: x.role,
-      associateId: x.associate_id ?? undefined,
-      createdAt: x.created_at ? iso(new Date(x.created_at)) : iso(new Date()),
-    }));
-
-    return {
-      cases: (c.data ?? []).map(fromRow),
-      assoc: (a.data ?? []).map((x: any) => ({ id: x.id, name: x.name, phone: x.phone ?? '' })),
-      users: usersList,
-      phone: (s.data as any)?.value ?? '',
-      log: (l.data ?? []).map((x: any) => ({
-        key: String(x.id), to: x.recipient ?? '', num: x.phone,
-        t: new Date(x.sent_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }),
-      })),
-    };
-  },
-  async saveCase(c) {
-    let id = c.id;
-    if (id) {
-      const { error } = await db().from('cases').update(toRow(c)).eq('id', id);
-      fail(error);
-    } else {
-      const { data, error } = await db().from('cases').insert(toRow(c)).select('id').single();
-      fail(error);
-      id = (data as any).id as string;
-    }
-    const del = await db().from('case_associates').delete().eq('case_id', id);
-    fail(del.error);
-    if (c.assoc.length) {
-      const ins = await db().from('case_associates').insert(c.assoc.map((a) => ({ case_id: id, associate_id: a })));
-      fail(ins.error);
-    }
-    return { ...c, id };
-  },
-  async deleteCase(id) {
-    const { error } = await db().from('cases').delete().eq('id', id);
-    fail(error);
-  },
-  async addAssociate(a) {
-    const { data, error } = await db().from('associates').insert({ name: a.name, phone: a.phone || null }).select('*').single();
-    fail(error);
-    return { id: (data as any).id, name: (data as any).name, phone: (data as any).phone ?? '' };
-  },
-  async removeAssociate(id) {
-    const { error } = await db().from('associates').delete().eq('id', id);
-    fail(error);
-  },
-  async setPhone(p) {
-    const { error } = await db().from('settings').upsert({ key: 'advocate_phone', value: p });
-    fail(error);
-  },
-  async addLog() { /* the cron route writes reminder_log in live mode */ },
-  async saveUser(u) {
-    if (u.id && !u.id.startsWith('u-')) {
-      const { data, error } = await db().from('chamber_users').update({
-        username: u.username,
-        email: u.email,
-        password: u.password,
-        name: u.name,
-        role: u.role,
-        associate_id: u.associateId || null,
-      }).eq('id', u.id).select('*').single();
-      fail(error);
-      return { ...u, id: (data as any).id };
-    } else {
-      const { data, error } = await db().from('chamber_users').insert({
-        username: u.username,
-        email: u.email,
-        password: u.password,
-        name: u.name,
-        role: u.role,
-        associate_id: u.associateId || null,
-      }).select('*').single();
-      fail(error);
-      return { ...u, id: (data as any).id };
-    }
-  },
-  async deleteUser(id) {
-    const { error } = await db().from('chamber_users').delete().eq('id', id);
-    fail(error);
-  },
-  async updatePassword(userId, newPass) {
-    const { error } = await db().from('chamber_users').update({ password: newPass }).eq('id', userId);
-    fail(error);
+  async load() { return api<Data>('load'); },
+  async saveCase(c) { return api<Case>('saveCase', c); },
+  async deleteCase(id) { await api('deleteCase', id); },
+  async addAssociate(a) { return api<Associate>('addAssociate', a); },
+  async removeAssociate(id) { await api('removeAssociate', id); },
+  async setPhone(p) { await api('setPhone', p); },
+  async addLog(entries) { await api('addLog', entries); },
+  async saveUser(u) { return api<User>('saveUser', u); },
+  async deleteUser(id) { await api('deleteUser', id); },
+  async updatePassword(userId, newPass, currentPass) {
+    await api('updatePassword', { userId, newPass, currentPass });
   },
 };
 

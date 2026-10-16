@@ -9,13 +9,43 @@ create table associates (
 create table chamber_users (
   id uuid primary key default gen_random_uuid(),
   username text unique not null,
-  email text,
-  password text not null,
+  email text unique,
+  password_hash text not null,
   name text not null,
   role text not null check (role in ('superadmin', 'associate')),
   associate_id uuid references associates(id) on delete set null,
-  created_at timestamptz default now()
+  created_at timestamptz default now(),
+  session_version integer not null default 1
 );
+
+create or replace function bootstrap_chamber_admin(
+  p_username text,
+  p_email text,
+  p_password_hash text,
+  p_name text
+) returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  new_user_id uuid;
+begin
+  perform pg_advisory_xact_lock(hashtext('garwan-chamber-first-admin')::bigint);
+  if exists (select 1 from chamber_users) then
+    raise exception 'Initial admin is already configured';
+  end if;
+
+  insert into chamber_users (username, email, password_hash, name, role)
+  values (lower(trim(p_username)), lower(trim(p_email)), p_password_hash, trim(p_name), 'superadmin')
+  returning id into new_user_id;
+
+  return new_user_id;
+end;
+$$;
+
+revoke all on function bootstrap_chamber_admin(text, text, text, text) from public, anon, authenticated;
+grant execute on function bootstrap_chamber_admin(text, text, text, text) to service_role;
 
 create table cases (
   id uuid primary key default gen_random_uuid(),
@@ -62,7 +92,8 @@ create table reminder_log (
   unique (case_id, hearing_date, phone)
 );
 
--- Only signed-in users (Mehtab and his team) can read or write.
+-- The app accesses these tables only through its server API using the service role.
+-- Keep RLS enabled and do not add client-facing policies for anon or authenticated.
 alter table associates enable row level security;
 alter table chamber_users enable row level security;
 alter table cases enable row level security;
@@ -70,14 +101,10 @@ alter table case_associates enable row level security;
 alter table settings enable row level security;
 alter table reminder_log enable row level security;
 
-create policy "team access" on associates for all to authenticated using (true) with check (true);
-create policy "team access" on chamber_users for all to authenticated using (true) with check (true);
-create policy "team access" on cases for all to authenticated using (true) with check (true);
-create policy "team access" on case_associates for all to authenticated using (true) with check (true);
-create policy "team access" on settings for all to authenticated using (true) with check (true);
-create policy "team access" on reminder_log for all to authenticated using (true) with check (true);
+create table if not exists chamber_backups (
+  id bigserial primary key,
+  payload jsonb not null,
+  created_at timestamptz default now()
+);
 
--- Seed initial chamber users
-insert into chamber_users (username, email, password, name, role)
-values ('superadmin', 'admin@garwanlaw.com', 'admin123', 'Maher Mehtab Hassan Garwan', 'superadmin')
-on conflict (username) do nothing;
+alter table chamber_backups enable row level security;

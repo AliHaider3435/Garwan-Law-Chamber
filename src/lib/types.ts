@@ -11,11 +11,12 @@ export interface User {
   id: string;
   username: string;
   email: string;
-  password: string; // Plaintext visible to super admin as requested
+  password?: string;
   name: string;
   role: UserRole;
   associateId?: string; // Links to Associate id if role is associate
   createdAt: string;
+  sessionVersion?: number;
 }
 
 export interface Case {
@@ -44,6 +45,14 @@ export interface LogEntry {
   to: string;
   num: string;
   t: string;
+}
+
+export interface ChamberData {
+  cases: Case[];
+  assoc: Associate[];
+  users: User[];
+  phone: string;
+  log: LogEntry[];
 }
 
 export const OUTCOMES = ['Acquitted', 'Bail granted', 'Sentence reduced', 'Convicted', 'Dismissed', 'Compromise'];

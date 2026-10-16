@@ -14,6 +14,7 @@ export default function CaseTable({ list, empty }: { list: Case[]; empty: string
   const { openCase } = useStore();
   if (!list.length) return <p className="mut pad" style={{ margin: 0 }}>{empty}</p>;
   return (
+    <div className="tbl-wrap">
     <table className="tb">
       <thead>
         <tr><th>Case</th><th className="hm">Court</th><th>Status</th><th>Date</th></tr>
@@ -29,5 +30,6 @@ export default function CaseTable({ list, empty }: { list: Case[]; empty: string
         ))}
       </tbody>
     </table>
+    </div>
   );
 }
