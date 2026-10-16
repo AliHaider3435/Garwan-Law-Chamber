@@ -25,12 +25,6 @@ export default function Login() {
     if (err) setError(err);
   }
 
-  function fillCreds(u: string, p: string) {
-    setIdentifier(u);
-    setPassword(p);
-    setError('');
-  }
-
   return (
     <div className="lg">
       <form className="pn" onSubmit={submit}>
@@ -47,7 +41,7 @@ export default function Login() {
             type="text"
             required
             autoComplete="username"
-            placeholder="superadmin or admin@garwanlaw.com"
+            placeholder="Username or email"
             value={identifier}
             onChange={(e) => setIdentifier(e.target.value)}
           />
@@ -68,55 +62,9 @@ export default function Login() {
 
         {error && <p style={{ color: 'var(--dng)', margin: '0 0 12px', fontSize: 14 }}>{error}</p>}
 
-        <button className="pri" disabled={busy} style={{ width: '100%', marginBottom: 14 }}>
+        <button className="pri" disabled={busy} style={{ width: '100%' }}>
           {busy ? 'Signing in...' : 'Sign in'}
         </button>
-
-        {/* Demo Credentials Box */}
-        <div
-          style={{
-            marginTop: 10,
-            padding: 12,
-            border: '1px dashed var(--brass)',
-            background: 'var(--bg)',
-            borderRadius: 2,
-            fontSize: 13,
-          }}
-        >
-          <b style={{ display: 'block', marginBottom: 6, color: 'var(--bur)' }}>Quick Login Accounts:</b>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <button
-              type="button"
-              className="ghost sm"
-              style={{ textAlign: 'left', padding: '5px 8px', display: 'flex', justifyContent: 'space-between' }}
-              onClick={() => fillCreds('superadmin', 'admin123')}
-            >
-              <span>👑 <b>Super Admin:</b> superadmin</span>
-              <span className="sm mut">Pass: admin123</span>
-            </button>
-            <button
-              type="button"
-              className="ghost sm"
-              style={{ textAlign: 'left', padding: '5px 8px', display: 'flex', justifyContent: 'space-between' }}
-              onClick={() => fillCreds('usman', 'usman123')}
-            >
-              <span>⚖️ <b>Associate:</b> usman</span>
-              <span className="sm mut">Pass: usman123</span>
-            </button>
-            <button
-              type="button"
-              className="ghost sm"
-              style={{ textAlign: 'left', padding: '5px 8px', display: 'flex', justifyContent: 'space-between' }}
-              onClick={() => fillCreds('hina', 'hina123')}
-            >
-              <span>⚖️ <b>Associate:</b> hina</span>
-              <span className="sm mut">Pass: hina123</span>
-            </button>
-          </div>
-          <small className="mut" style={{ marginTop: 8, display: 'block' }}>
-            Click any account above to pre-fill credentials and test authorization.
-          </small>
-        </div>
       </form>
     </div>
   );
