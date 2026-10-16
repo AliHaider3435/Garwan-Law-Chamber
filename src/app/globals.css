@@ -88,7 +88,6 @@ dialog::backdrop{background:#0009}
 .msg small{display:inline;margin-left:8px}
 .lg{min-height:100vh;display:grid;place-items:center;padding:16px;background:var(--navy)}
 .lg .pn{width:min(400px,100%);border-top-color:var(--bur);padding:26px}
-.login-brand-logo{display:block;width:150px;height:100px;object-fit:contain;margin:0 auto 14px}
 .whatsapp-login{position:fixed;right:20px;bottom:calc(20px + env(safe-area-inset-bottom,0px));width:52px;height:52px;background:#fff}
 .whatsapp-login svg{width:32px;height:32px}
 .lg h1{font-size:32px;margin:14px 0 4px}
