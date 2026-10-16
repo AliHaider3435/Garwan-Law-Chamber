@@ -35,8 +35,8 @@ export async function POST(req: Request) {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254 || !name || name.length > 120) {
       return NextResponse.json({ error: 'Enter a valid email address and name.' }, { status: 400 });
     }
-    if (password.length < 12 || password.length > 256) {
-      return NextResponse.json({ error: 'Password must be 12-256 characters long.' }, { status: 400 });
+    if (password.length < 8 || password.length > 256) {
+      return NextResponse.json({ error: 'Password must be 8-256 characters long.' }, { status: 400 });
     }
 
     const passwordHash = await hashPassword(password);

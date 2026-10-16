@@ -38,8 +38,8 @@ export default function UsersPage() {
       toast('Please fill in username, name, and password.');
       return;
     }
-    if (password.trim().length < 12 || password.length > 256) {
-      toast('Passwords must be 12-256 characters long.');
+    if (password.trim().length < 8 || password.length > 256) {
+      toast('Passwords must be 8-256 characters long.');
       return;
     }
 
@@ -80,8 +80,8 @@ export default function UsersPage() {
   async function savePasswordEdit(userId: string) {
     const userToEdit = users.find((u) => u.id === userId);
     if (!userToEdit || !editPass.trim()) return;
-    if (editPass.trim().length < 12 || editPass.length > 256) {
-      toast('Passwords must be 12-256 characters long.');
+    if (editPass.trim().length < 8 || editPass.length > 256) {
+      toast('Passwords must be 8-256 characters long.');
       return;
     }
     const error = await updateUser({ ...userToEdit, password: editPass });
@@ -144,10 +144,10 @@ export default function UsersPage() {
             <input
               type="password"
               required
-              minLength={12}
+              minLength={8}
               maxLength={256}
               autoComplete="new-password"
-              placeholder="12-256 characters"
+              placeholder="8-256 characters"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
@@ -258,14 +258,14 @@ export default function UsersPage() {
                         <input
                           type="password"
                           autoComplete="new-password"
-                          minLength={12}
+                          minLength={8}
                           maxLength={256}
                           placeholder="New password"
                           value={editPass}
                           onChange={(e) => setEditPass(e.target.value)}
                           style={{ padding: '4px 8px', width: 150, margin: 0 }}
                         />
-                        <button className="pri sm" type="button" disabled={editPass.trim().length < 12 || editPass.length > 256} onClick={() => savePasswordEdit(u.id)}>Save</button>
+                        <button className="pri sm" type="button" disabled={editPass.trim().length < 8 || editPass.length > 256} onClick={() => savePasswordEdit(u.id)}>Save</button>
                         <button className="ghost sm" type="button" onClick={() => setEditingUserId(null)}>X</button>
                       </div>
                     ) : (

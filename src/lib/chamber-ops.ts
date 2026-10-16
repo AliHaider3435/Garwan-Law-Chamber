@@ -182,8 +182,8 @@ export async function saveUser(u: User): Promise<User> {
   };
   const newPassword = u.password;
   if (newPassword) {
-    if (newPassword.trim().length < 12 || newPassword.length > 256) {
-      throw new Error('Passwords must be 12-256 characters long.');
+    if (newPassword.trim().length < 8 || newPassword.length > 256) {
+      throw new Error('Passwords must be 8-256 characters long.');
     }
     row.password_hash = await hashPassword(newPassword);
   }
@@ -227,8 +227,8 @@ export async function verifyUserPassword(userId: string, password: string) {
 }
 
 export async function updatePassword(userId: string, newPass: string) {
-  if (newPass.trim().length < 12 || newPass.length > 256) {
-    throw new Error('Passwords must be 12-256 characters long.');
+  if (newPass.trim().length < 8 || newPass.length > 256) {
+    throw new Error('Passwords must be 8-256 characters long.');
   }
   const db = serviceDb();
   const user = await getUserById(userId);

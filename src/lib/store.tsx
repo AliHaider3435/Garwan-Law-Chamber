@@ -278,8 +278,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (!LIVE && oldPass && oldPass !== currentUser.password) {
         return 'Current password does not match.';
       }
-      if (newPass.trim().length < 12 || newPass.length > 256) {
-        return 'New password must be 12-256 characters long.';
+      if (newPass.trim().length < 8 || newPass.length > 256) {
+        return 'New password must be 8-256 characters long.';
       }
 
       try {
