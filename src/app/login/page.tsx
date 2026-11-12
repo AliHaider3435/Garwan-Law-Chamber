@@ -2,8 +2,9 @@
 
 import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { useStore } from '@/lib/store';
-import WhatsAppLink from '@/components/WhatsAppLink';
+import PasswordInput from '@/components/PasswordInput';
 
 export default function Login() {
   const { ready, authed, signIn } = useStore();
@@ -50,14 +51,13 @@ export default function Login() {
 
         <label>
           Password
-          <input
+          <PasswordInput
             name="password"
-            type="password"
-            required
+            value={password}
+            onChange={setPassword}
             autoComplete="current-password"
             placeholder="Enter password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            required
           />
         </label>
 
@@ -67,7 +67,19 @@ export default function Login() {
           {busy ? 'Signing in...' : 'Sign in'}
         </button>
       </form>
-      <WhatsAppLink className="whatsapp-login" />
+
+      <div style={{ marginTop: 18, display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: 'var(--mut)' }}>
+        <span>Developed by</span>
+        <a
+          href="https://techagenz.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Tech Agenz - Software Development Agency"
+          style={{ display: 'inline-flex', alignItems: 'center', textDecoration: 'none', transition: 'transform 0.18s' }}
+        >
+          <Image src="/tech-agenz-logo.png" alt="Tech Agenz" width={84} height={56} style={{ width: 84, height: 'auto', display: 'block' }} />
+        </a>
+      </div>
     </div>
   );
 }

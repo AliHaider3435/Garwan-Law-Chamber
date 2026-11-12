@@ -4,6 +4,8 @@ import { FormEvent, useEffect, useRef, useState } from 'react';
 import { Case, CASE_TYPES, OUTCOMES, STAGES, blankCase } from '@/lib/types';
 import { today } from '@/lib/dates';
 import { useStore } from '@/lib/store';
+import { extractDistrict } from '@/lib/dsj-districts';
+import DsjLink from './DsjLink';
 
 export default function CaseDialog() {
   const { dlg, closeCase } = useStore();
@@ -29,7 +31,16 @@ function CaseForm({ initial }: { initial: Case | null }) {
   const isAssociate = currentUser?.role === 'associate';
 
   const [f, setF] = useState<Case>(() => {
-    if (initial) return initial;
+    if (initial) {
+      return {
+        ...initial,
+        typeOther: initial.typeOther ?? '',
+        stageOther: initial.stageOther ?? '',
+        codeStation: initial.codeStation ?? '',
+        district: initial.district ?? '',
+        tehsil: initial.tehsil ?? '',
+      };
+    }
     const b = blankCase();
     if (isAssociate && currentUser.associateId) {
       b.assoc = [currentUser.associateId];
@@ -81,25 +92,149 @@ function CaseForm({ initial }: { initial: Case | null }) {
 
   return (
     <form onSubmit={submit} id="cf">
-      <h2>{isNew ? 'Add case' : 'Edit case'}</h2>
+
+      {/* ── Header row: title + stage pill + close button ── */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 18 }}>
+        <div style={{ flex: 1 }}>
+          <h2 style={{ margin: 0 }}>{isNew ? 'Add case' : 'Edit case'}</h2>
+        </div>
+        {/* Stage quick-select */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          <label style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--mut)' }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+            </svg>
+            Stage
+            <select
+              value={f.stage}
+              onChange={(e) => set('stage', e.target.value)}
+              style={{
+                margin: 0,
+                padding: '4px 8px',
+                fontSize: 12,
+                fontWeight: 600,
+                border: '1px solid rgba(0,0,0,0.18)',
+                borderRadius: 5,
+                background: 'var(--card)',
+                color: 'var(--ink)',
+                cursor: 'pointer',
+                minWidth: 130,
+              }}
+            >
+              {STAGES.map((s) => <option key={s}>{s}</option>)}
+            </select>
+          </label>
+          {/* Close × button */}
+          <button
+            type="button"
+            onClick={closeCase}
+            title="Close"
+            style={{
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              width: 32, height: 32, flexShrink: 0,
+              background: 'none', border: '1px solid rgba(0,0,0,0.14)',
+              borderRadius: 6, cursor: 'pointer', color: 'var(--mut)',
+              fontSize: 18, lineHeight: 1, transition: 'all 0.15s',
+            }}
+            onMouseEnter={e => {
+              (e.currentTarget as HTMLButtonElement).style.background = 'var(--ink)';
+              (e.currentTarget as HTMLButtonElement).style.color = 'var(--card)';
+            }}
+            onMouseLeave={e => {
+              (e.currentTarget as HTMLButtonElement).style.background = 'none';
+              (e.currentTarget as HTMLButtonElement).style.color = 'var(--mut)';
+            }}
+          >
+            ×
+          </button>
+        </div>
+      </div>
+
+      {/* "Other" free-text field for stage */}
+      {f.stage === 'Other' && (
+        <label style={{ marginBottom: 14 }}>
+          Specify case stage
+          <input
+            type="text"
+            value={f.stageOther ?? ''}
+            placeholder="Enter stage description…"
+            onChange={(e) => set('stageOther', e.target.value)}
+          />
+        </label>
+      )}
+
+      {/* Case title */}
       {input('Case title', 'title', 'text', 'State v/s ...')}
+
+      {/* Case no. + Court */}
       <div className="g2">{input('Case no.', 'caseNo')}{input('Court', 'court')}</div>
+
+      {/* DSJ link (existing cases only) */}
+      {!isNew && f.caseNo && (
+        <div style={{ marginBottom: 14, marginTop: -6 }}>
+          <DsjLink
+            caseNo={f.caseNo}
+            court={f.court}
+            variant="full"
+            onCopied={() => {
+              const d = extractDistrict(f.court || '');
+              toast(d
+                ? `Copied ${f.caseNo} — Select "${d}" on DSJ, then paste`
+                : `Case no. ${f.caseNo} copied — paste it in the DSJ search box`
+              );
+            }}
+          />
+        </div>
+      )}
+
+      {/* Client name + phone */}
       <div className="g2">{input('Client name', 'clientName')}{input('Client phone', 'clientPhone', 'tel', '03xx xxxxxxx')}</div>
-      <div className="g2">{input('Opposing party', 'opposing')}{select('Case type', 'type', CASE_TYPES)}</div>
-      <div className="g2">{input('FIR no.', 'fir')}{input('Police station', 'station')}</div>
-      {input('Sections', 'sections')}
+
+      {/* Opposing + Case type */}
       <div className="g2">
-        {select('Stage', 'stage', STAGES)}
-        <label>Status
-          <select value={f.status} onChange={(e) => setStatus(e.target.value as Case['status'])}>
-            <option value="active">Active</option>
-            <option value="decided">Decided</option>
+        {input('Opposing party', 'opposing')}
+        <label>Case type
+          <select value={f.type} onChange={(e) => set('type', e.target.value)}>
+            {CASE_TYPES.map((o) => <option key={o}>{o}</option>)}
           </select>
         </label>
       </div>
+
+      {/* "Other" free-text field for case type */}
+      {f.type === 'Other' && (
+        <label>Specify case type
+          <input
+            type="text"
+            value={f.typeOther ?? ''}
+            placeholder="Enter case type…"
+            onChange={(e) => set('typeOther', e.target.value)}
+          />
+        </label>
+      )}
+
+      {/* District + Tehsil */}
+      <div className="g2">{input('District', 'district', 'text', 'e.g. Multan')}{input('Tehsil', 'tehsil', 'text', 'e.g. Multan City')}</div>
+
+      {/* FIR no. + Police Station + Code Station */}
+      <div className="g2">{input('FIR no.', 'fir')}{input('Police station', 'station')}</div>
+      {input('Station code', 'codeStation', 'text', 'e.g. MLT-01')}
+
+      {/* Sections */}
+      {input('Sections', 'sections')}
+
+      {/* Status row (stage moved to header) */}
+      <label>Status
+        <select value={f.status} onChange={(e) => setStatus(e.target.value as Case['status'])}>
+          <option value="active">Active</option>
+          <option value="decided">Decided</option>
+        </select>
+      </label>
+
       {f.status === 'active'
         ? input('Next hearing', 'next', 'date')
         : <div className="g2">{input('Decision date', 'decidedOn', 'date')}{select('Outcome', 'outcome', OUTCOMES)}</div>}
+
+      {/* Associates */}
       <fieldset>
         <legend className="sm mut">Associates on this case</legend>
         {assoc.length === 0 && <small>Add associates first.</small>}
@@ -116,6 +251,8 @@ function CaseForm({ initial }: { initial: Case | null }) {
           </label>
         ))}
       </fieldset>
+
+      {/* Action buttons */}
       <div className="act">
         {!isNew && !isAssociate && (
           <button type="button" className="dng" onClick={() => (armed ? deleteCase(f.id) : setArmed(true))}>

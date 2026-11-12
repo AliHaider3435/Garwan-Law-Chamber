@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#18181d"/>
+      <stop offset="100%" stop-color="#060608"/>
+    </linearGradient>
+    <linearGradient id="strokeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.1"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Outer Seal Plaque -->
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="url(#bgGrad)" stroke="url(#strokeGrad)" stroke-width="2"/>
+  
+  <!-- Inner Ornamental Border -->
+  <rect x="6" y="6" width="52" height="52" rx="10" fill="none" stroke="#ffffff" stroke-opacity="0.15" stroke-width="1" stroke-dasharray="3 3"/>
+
+  <!-- Scales of Justice beam subtle top accent -->
+  <line x1="20" y1="12" x2="44" y2="12" stroke="#ffffff" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="32" cy="12" r="1.5" fill="#ffffff"/>
+  <line x1="24" y1="12" x2="21" y2="17" stroke="#ffffff" stroke-width="0.8" stroke-opacity="0.6"/>
+  <line x1="40" y1="12" x2="43" y2="17" stroke="#ffffff" stroke-width="0.8" stroke-opacity="0.6"/>
+  <path d="M 18,17 Q 21,20 24,17 Z" fill="#ffffff" fill-opacity="0.7"/>
+  <path d="M 40,17 Q 43,20 46,17 Z" fill="#ffffff" fill-opacity="0.7"/>
+
+  <!-- Regal Monogram 'G' -->
+  <text 
+    x="32" 
+    y="46" 
+    font-family="'Cormorant Garamond', Georgia, 'Times New Roman', serif" 
+    font-size="34" 
+    font-weight="700" 
+    fill="#ffffff" 
+    text-anchor="middle"
+    letter-spacing="-0.02em"
+  >G</text>
+</svg>

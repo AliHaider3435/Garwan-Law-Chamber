@@ -4,6 +4,7 @@ import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useStore } from '@/lib/store';
 import { UserRole } from '@/lib/types';
+import PasswordInput from '@/components/PasswordInput';
 
 export default function UsersPage() {
   const { currentUser, users, assoc, addUser, deleteUser, updateUser, addAssociate, toast } = useStore();
@@ -141,15 +142,14 @@ export default function UsersPage() {
           </label>
           <label>
             Initial password
-            <input
-              type="password"
+            <PasswordInput
+              value={password}
+              onChange={setPassword}
+              autoComplete="new-password"
+              placeholder="8-256 characters"
               required
               minLength={8}
               maxLength={256}
-              autoComplete="new-password"
-              placeholder="8-256 characters"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
             />
           </label>
         </div>
@@ -254,23 +254,29 @@ export default function UsersPage() {
                   </td>
                   <td>
                     {isEditing ? (
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        <input
-                          type="password"
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <PasswordInput
+                          value={editPass}
+                          onChange={setEditPass}
                           autoComplete="new-password"
+                          placeholder="New password (min 8)"
                           minLength={8}
                           maxLength={256}
-                          placeholder="New password"
-                          value={editPass}
-                          onChange={(e) => setEditPass(e.target.value)}
-                          style={{ padding: '4px 8px', width: 150, margin: 0 }}
+                          style={{ width: 170, padding: '4px 42px 4px 8px', fontSize: 13 }}
                         />
-                        <button className="pri sm" type="button" disabled={editPass.trim().length < 8 || editPass.length > 256} onClick={() => savePasswordEdit(u.id)}>Save</button>
-                        <button className="ghost sm" type="button" onClick={() => setEditingUserId(null)}>X</button>
+                        <button
+                          className="pri sm"
+                          type="button"
+                          disabled={editPass.trim().length < 8 || editPass.length > 256}
+                          onClick={() => savePasswordEdit(u.id)}
+                        >
+                          Save
+                        </button>
+                        <button className="ghost sm" type="button" onClick={() => setEditingUserId(null)}>✕</button>
                       </div>
                     ) : (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span className="sm mut">Not shown</span>
+                        <span className="sm mut">Hidden</span>
                         <button
                           type="button"
                           className="lnk sm"

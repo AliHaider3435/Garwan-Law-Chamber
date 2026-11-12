@@ -37,7 +37,8 @@ function seed(): Data {
     next: number, assoc: string[], dec?: number, out?: string,
   ): Case => ({
     id: 'c' + i++, title, caseNo: '', court, judge: '', clientName: client, clientPhone: phone,
-    opposing: 'State', type, fir: '', station: '', sections: '', stage,
+    opposing: 'State', type, typeOther: '', fir: '', station: '', codeStation: '', district: '', tehsil: '',
+    sections: '', stage, stageOther: '',
     status: dec ? 'decided' : 'active', next: dec ? '' : d(next), assoc,
     decidedOn: dec ? d(dec) : '', outcome: out ?? '',
   });

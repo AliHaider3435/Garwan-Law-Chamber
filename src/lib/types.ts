@@ -29,10 +29,15 @@ export interface Case {
   clientPhone: string;
   opposing: string;
   type: string;
+  typeOther: string;      // free-text when type === 'Other'
   fir: string;
   station: string;
+  codeStation: string;    // police station code
+  district: string;       // district
+  tehsil: string;         // tehsil
   sections: string;
   stage: string;
+  stageOther: string;     // free-text when stage === 'Other'
   status: Status;
   next: string; // YYYY-MM-DD, active cases only
   decidedOn: string; // YYYY-MM-DD, decided cases only
@@ -56,11 +61,33 @@ export interface ChamberData {
 }
 
 export const OUTCOMES = ['Acquitted', 'Bail granted', 'Convicted', 'Dismissed', 'Compromise'];
-export const CASE_TYPES = ['Murder (302 PPC)', 'Narcotics (CNSA)', 'Bail application', 'Criminal appeal', 'Revision', 'Other'];
-export const STAGES = ['Notices', 'Evidence', 'Arguments', 'Judgment reserved', 'Bail hearing', 'Other'];
+export const CASE_TYPES = [
+  'Narcotics (CNSA)',
+  'Bail application',
+  'Criminal appeal',
+  'Revision',
+  'Banking Code',
+  'NAB',
+  'FIA',
+  'NICCIA',
+  'Anticorruption',
+  'Family case',
+  'CNF',
+  'Other',
+];
+export const STAGES = [
+  'Notices',
+  'Evidence',
+  'Arguments',
+  'Right closed',
+  'Judgment reserved',
+  'Bail hearing',
+  'Other',
+];
 
 export const blankCase = (): Case => ({
   id: '', title: '', caseNo: '', court: '', judge: '', clientName: '', clientPhone: '', opposing: 'State',
-  type: CASE_TYPES[0], fir: '', station: '', sections: '', stage: STAGES[0], status: 'active',
+  type: CASE_TYPES[0], typeOther: '', fir: '', station: '', codeStation: '', district: '', tehsil: '',
+  sections: '', stage: STAGES[0], stageOther: '', status: 'active',
   next: '', decidedOn: '', outcome: '', assoc: [],
 });
