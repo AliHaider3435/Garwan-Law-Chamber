@@ -10,6 +10,11 @@ import { InputError, NotFoundError } from '../src/lib/errors.ts';
 import { fromRow, toRow } from '../src/lib/mapping.ts';
 import { readJsonBody, RequestBodyError } from '../src/lib/request-body.ts';
 import { sendSms, SmsGatewayError } from '../src/lib/sms.ts';
+import {
+  resolveBrowserSupabaseConfig,
+  resolveServerSupabaseConfig,
+  SupabaseConfigurationError,
+} from '../src/lib/supabase-config.ts';
 
 const admin = {
   id: '00000000-0000-4000-8000-000000000001',
@@ -34,6 +39,11 @@ const caseInput = {
   typeOther: 'Special proceeding',
   stageOther: 'Awaiting notices',
   assoc: [associateId],
+};
+const fullSupabaseConfig = {
+  url: 'https://test-project.supabase.co',
+  anonKey: 'test-anon-key',
+  serviceRoleKey: 'test-service-role-key',
 };
 
 function fixture() {
@@ -407,4 +417,94 @@ test('marks rejected SMS provider responses as failures without contacting a rea
   await assert.rejects(sendSms('03001234567', 'QA fixture'), (error) =>
     error instanceof SmsGatewayError && error.rejected,
   );
+});
+
+test('Supabase config accepts all required variables without exposing server key to browser config', () => {
+  const browser = resolveBrowserSupabaseConfig({
+    ...fullSupabaseConfig,
+    serviceRoleKeyConfigured: true,
+    deployment: 'production',
+  });
+  const server = resolveServerSupabaseConfig({
+    ...fullSupabaseConfig,
+    deployment: 'production',
+  });
+  assert.equal(browser.configured, true);
+  assert.equal(browser.url, fullSupabaseConfig.url);
+  assert.equal(browser.anonKey, fullSupabaseConfig.anonKey);
+  assert.equal('serviceRoleKey' in browser, false);
+  assert.equal(server.configured, true);
+  assert.equal(server.serviceRoleKey, fullSupabaseConfig.serviceRoleKey);
+});
+
+test('Supabase config rejects a missing URL with a non-secret error', () => {
+  assert.throws(() => resolveServerSupabaseConfig({
+    ...fullSupabaseConfig,
+    url: '',
+    deployment: 'production',
+  }), (error) => {
+    assert.ok(error instanceof SupabaseConfigurationError);
+    assert.deepEqual(error.missing, ['NEXT_PUBLIC_SUPABASE_URL']);
+    assert.doesNotMatch(error.message, /test-project|test-anon-key|test-service-role-key/);
+    return true;
+  });
+});
+
+test('Supabase config rejects a missing anon key', () => {
+  assert.throws(() => resolveServerSupabaseConfig({
+    ...fullSupabaseConfig,
+    anonKey: '',
+    deployment: 'production',
+  }), (error) => {
+    assert.ok(error instanceof SupabaseConfigurationError);
+    assert.deepEqual(error.missing, ['NEXT_PUBLIC_SUPABASE_ANON_KEY']);
+    return true;
+  });
+});
+
+test('Supabase config rejects a missing service-role key', () => {
+  assert.throws(() => resolveServerSupabaseConfig({
+    ...fullSupabaseConfig,
+    serviceRoleKey: '',
+    deployment: 'production',
+  }), (error) => {
+    assert.ok(error instanceof SupabaseConfigurationError);
+    assert.deepEqual(error.missing, ['SUPABASE_SERVICE_ROLE_KEY']);
+    return true;
+  });
+});
+
+test('partial Supabase configuration is rejected for Production and Preview', () => {
+  for (const deployment of ['production', 'preview']) {
+    assert.throws(() => resolveServerSupabaseConfig({
+      url: fullSupabaseConfig.url,
+      anonKey: fullSupabaseConfig.anonKey,
+      deployment,
+    }), (error) => {
+      assert.ok(error instanceof SupabaseConfigurationError);
+      assert.deepEqual(error.missing, ['SUPABASE_SERVICE_ROLE_KEY']);
+      return true;
+    }, deployment);
+  }
+});
+
+test('browser config rejects a missing service-role-key presence flag in Production and Preview', () => {
+  for (const deployment of ['production', 'preview']) {
+    assert.throws(() => resolveBrowserSupabaseConfig({
+      url: fullSupabaseConfig.url,
+      anonKey: fullSupabaseConfig.anonKey,
+      deployment,
+    }), (error) => {
+      assert.ok(error instanceof SupabaseConfigurationError);
+      assert.deepEqual(error.missing, ['SUPABASE_SERVICE_ROLE_KEY']);
+      return true;
+    }, deployment);
+  }
+});
+
+test('local development with no Supabase config remains in local demo mode', () => {
+  const browser = resolveBrowserSupabaseConfig({ deployment: 'development' });
+  const server = resolveServerSupabaseConfig({ deployment: 'development' });
+  assert.equal(browser.configured, false);
+  assert.equal(server.configured, false);
 });

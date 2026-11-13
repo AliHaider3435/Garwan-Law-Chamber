@@ -1,9 +1,9 @@
 // Runs every evening via Vercel Cron (vercel.json: 13:00 UTC = 18:00 PKT).
 // Sends SMS for hearings due tomorrow (Pakistan time) to Mehtab, the client and linked associates.
-import { createClient } from '@supabase/supabase-js';
 import { fromRow } from '@/lib/mapping';
 import { buildReminders } from '@/lib/reminders';
 import { isSmsConfigured, sendSms, SmsGatewayError } from '@/lib/sms';
+import { getSupabaseConfigurationError, serviceDb } from '@/lib/server-db';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,11 +12,10 @@ export async function GET(req: Request) {
   if (req.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
     return new Response('Unauthorized', { status: 401 });
   }
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return new Response('Supabase env vars missing', { status: 500 });
+  const configError = getSupabaseConfigurationError();
+  if (configError) return Response.json({ error: configError }, { status: 503 });
   if (!isSmsConfigured()) return new Response('SMS provider is not configured', { status: 503 });
-  const db = createClient(url, key);
+  const db = serviceDb();
 
   // Tomorrow's date in Pakistan time, as YYYY-MM-DD
   const date = new Date(Date.now() + 24 * 3600e3).toLocaleDateString('en-CA', { timeZone: 'Asia/Karachi' });

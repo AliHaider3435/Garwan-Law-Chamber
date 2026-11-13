@@ -1,13 +1,22 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Associate, Case, ChamberData, LogEntry, User } from './types';
 import { addDays, iso } from './dates';
+import { resolveBrowserSupabaseConfig } from './supabase-config';
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const config = resolveBrowserSupabaseConfig({
+  url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+  anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  serviceRoleKeyConfigured: process.env.GLC_SUPABASE_SERVER_CONFIGURED === 'true',
+  deployment: process.env.GLC_DEPLOYMENT_ENV === 'preview' || process.env.GLC_DEPLOYMENT_ENV === 'production'
+    ? process.env.GLC_DEPLOYMENT_ENV
+    : 'development',
+});
 
-/** Present when a shared Supabase project URL is configured. */
-export const supabase: SupabaseClient | null = url && key ? createClient(url, key) : null;
-export const LIVE = !!url;
+/** Present only when the complete Supabase configuration is available. */
+export const supabase: SupabaseClient | null = config.configured
+  ? createClient(config.url, config.anonKey)
+  : null;
+export const LIVE = config.configured;
 
 export type Data = ChamberData;
 

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { clearSession, readSession, setSession } from '@/lib/session';
-import { isLiveConfigured } from '@/lib/server-db';
+import { getSupabaseConfigurationError } from '@/lib/server-db';
 import { executeChamberAction, requireActor, ActionError } from '@/lib/chamber-actions';
 import * as ops from '@/lib/chamber-ops';
 import { InputError, NotFoundError } from '@/lib/errors';
@@ -10,8 +10,9 @@ const MAX_BODY_BYTES = 32 * 1024;
 
 export async function POST(req: Request) {
   try {
-    if (!isLiveConfigured()) {
-      return NextResponse.json({ error: 'Shared database is not configured.' }, { status: 503 });
+    const configError = getSupabaseConfigurationError();
+    if (configError) {
+      return NextResponse.json({ error: configError }, { status: 503 });
     }
     const session = await readSession();
     if (!session) throw new ActionError('Please sign in.', 401);

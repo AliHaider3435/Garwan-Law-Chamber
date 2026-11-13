@@ -22,9 +22,15 @@ async function unusedPort() {
 test.before(async () => {
   const port = await unusedPort();
   baseUrl = `http://127.0.0.1:${port}`;
+  const testEnv = { ...process.env, NODE_ENV: 'production' };
+  delete testEnv.NEXT_PUBLIC_SUPABASE_URL;
+  delete testEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  delete testEnv.SUPABASE_SERVICE_ROLE_KEY;
+  delete testEnv.VERCEL_ENV;
+  testEnv.CRON_SECRET = 'integration-test-cron-secret';
   server = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'start', '-p', String(port)], {
     cwd: new URL('../', import.meta.url),
-    env: { ...process.env, NODE_ENV: 'production' },
+    env: testEnv,
     stdio: 'ignore',
     windowsHide: true,
   });
@@ -49,6 +55,13 @@ test.after(async () => {
 });
 
 test('HTTP API rejects unauthenticated chamber requests without reading database data', async () => {
+  const health = await fetch(`${baseUrl}/api/auth/me`);
+  assert.equal(health.status, 503);
+  const healthBody = await health.json();
+  assert.match(healthBody.error, /NEXT_PUBLIC_SUPABASE_URL/);
+  assert.match(healthBody.error, /NEXT_PUBLIC_SUPABASE_ANON_KEY/);
+  assert.match(healthBody.error, /SUPABASE_SERVICE_ROLE_KEY/);
+
   const response = await fetch(`${baseUrl}/api/chamber`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -74,4 +87,17 @@ test('HTTP login endpoint rejects malformed and oversized JSON before authentica
     body: JSON.stringify({ identifier: 'x'.repeat(5000), password: 'x' }),
   });
   assert.ok([413, 503].includes(oversized.status));
+});
+
+test('cron routes report incomplete Supabase configuration before accessing database or SMS services', async () => {
+  for (const path of ['/api/cron/backup', '/api/cron/send-reminders']) {
+    const response = await fetch(`${baseUrl}${path}`, {
+      headers: { authorization: 'Bearer integration-test-cron-secret' },
+    });
+    assert.equal(response.status, 503, path);
+    const body = await response.json();
+    assert.match(body.error, /NEXT_PUBLIC_SUPABASE_URL/);
+    assert.match(body.error, /NEXT_PUBLIC_SUPABASE_ANON_KEY/);
+    assert.match(body.error, /SUPABASE_SERVICE_ROLE_KEY/);
+  }
 });

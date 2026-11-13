@@ -22,6 +22,7 @@ shared Supabase database before deploying.
    - `SUPABASE_SERVICE_ROLE_KEY` (server only; never expose it in the browser)
    - `SESSION_SECRET` (a unique, randomly generated secret)
    - `INITIAL_ADMIN_SETUP_SECRET` (a temporary random secret of at least 32 characters)
+   Production and Preview require all three Supabase variables to point to the intended project. For this deployment, Preview uses the same Supabase project as Production. Local development may leave all three unset to use demo mode; partial configuration is rejected.
 3. Deploy, then create the first Super Admin by sending a `POST` request to
    `/api/auth/bootstrap` with the header `Authorization: Bearer <your temporary setup secret>` and JSON fields
    `username`, `email`, `name`, and `password`. Choose a unique password of at least 8 characters.

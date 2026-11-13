@@ -1,5 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  env: {
+    GLC_DEPLOYMENT_ENV: process.env.VERCEL_ENV ?? '',
+    GLC_SUPABASE_SERVER_CONFIGURED: process.env.SUPABASE_SERVICE_ROLE_KEY ? 'true' : 'false',
+  },
   reactStrictMode: true,
   poweredByHeader: false,
   compress: true,

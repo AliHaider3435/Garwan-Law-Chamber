@@ -5,8 +5,15 @@ import { hashPassword } from '@/lib/password';
 import { serviceDb } from '@/lib/server-db';
 import { setSession } from '@/lib/session';
 import { readJsonBody, RequestBodyError } from '@/lib/request-body';
+import { SupabaseConfigurationError } from '@/lib/supabase-config';
+import { getSupabaseConfigurationError } from '@/lib/server-db';
 
 export async function POST(req: Request) {
+  const configError = getSupabaseConfigurationError();
+  if (configError) {
+    return NextResponse.json({ error: configError }, { status: 503 });
+  }
+
   const setupSecret = process.env.INITIAL_ADMIN_SETUP_SECRET;
   if (!setupSecret || setupSecret.length < 32) {
     return NextResponse.json({ error: 'Initial admin setup is not enabled.' }, { status: 503 });
@@ -72,6 +79,9 @@ export async function POST(req: Request) {
   } catch (error) {
     if (error instanceof RequestBodyError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    if (error instanceof SupabaseConfigurationError) {
+      return NextResponse.json({ error: error.message }, { status: 503 });
     }
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }

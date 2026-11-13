@@ -1,14 +1,15 @@
 import { NextResponse } from 'next/server';
 import { getUserById } from '@/lib/chamber-ops';
 import { clearSession, readSession } from '@/lib/session';
-import { isLiveConfigured } from '@/lib/server-db';
+import { getSupabaseConfigurationError } from '@/lib/server-db';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    if (!isLiveConfigured()) {
-      return NextResponse.json({ user: null });
+    const configError = getSupabaseConfigurationError();
+    if (configError) {
+      return NextResponse.json({ error: configError }, { status: 503 });
     }
     const session = await readSession();
     if (!session) return NextResponse.json({ user: null });

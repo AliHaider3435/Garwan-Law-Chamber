@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { findUserByLogin } from '@/lib/chamber-ops';
 import { setSession } from '@/lib/session';
-import { isLiveConfigured, serviceDb } from '@/lib/server-db';
+import { getSupabaseConfigurationError, serviceDb } from '@/lib/server-db';
+import { SupabaseConfigurationError } from '@/lib/supabase-config';
 import { consumeLoginAttempt, requestIp, resetLoginAttempts } from '@/lib/auth-throttle';
 import { readJsonBody, RequestBodyError } from '@/lib/request-body';
 import { hashPassword, verifyPassword } from '@/lib/password';
@@ -13,8 +14,9 @@ let dummyHashPromise: Promise<string> | undefined;
 
 export async function POST(req: Request) {
   try {
-    if (!isLiveConfigured()) {
-      return NextResponse.json({ error: 'Shared database is not configured.' }, { status: 503 });
+    const configError = getSupabaseConfigurationError();
+    if (configError) {
+      return NextResponse.json({ error: configError }, { status: 503 });
     }
     let body: unknown;
     try {
@@ -65,6 +67,9 @@ export async function POST(req: Request) {
     await setSession(user.id, user.sessionVersion ?? 1);
     return NextResponse.json({ user });
   } catch (e) {
+    if (e instanceof SupabaseConfigurationError) {
+      return NextResponse.json({ error: e.message }, { status: 503 });
+    }
     console.error('Login request failed:', e);
     return NextResponse.json({ error: 'The sign-in request could not be completed.' }, { status: 500 });
   }
