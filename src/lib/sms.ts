@@ -5,6 +5,19 @@
 // The request below is a generic placeholder: replace the URL, field names and
 // auth header with the ones from the chosen provider's API documentation.
 
+export class SmsGatewayError extends Error {
+  readonly rejected: boolean;
+
+  constructor(message: string, rejected = false) {
+    super(message);
+    this.rejected = rejected;
+  }
+}
+
+export function isSmsConfigured(): boolean {
+  return !!(process.env.SMS_API_URL && process.env.SMS_API_KEY && process.env.SMS_SENDER_ID);
+}
+
 export function normalizePk(phone: string): string {
   const d = phone.replace(/\D/g, '');
   if (d.startsWith('92')) return d; // 923001234567
@@ -13,7 +26,8 @@ export function normalizePk(phone: string): string {
 }
 
 export async function sendSms(phone: string, text: string): Promise<string> {
-  const res = await fetch(process.env.SMS_API_URL as string, {
+  if (!isSmsConfigured()) throw new SmsGatewayError('SMS provider is not configured.');
+  const res = await fetch(process.env.SMS_API_URL!, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -25,5 +39,7 @@ export async function sendSms(phone: string, text: string): Promise<string> {
       message: text,
     }),
   });
-  return `${res.status} ${await res.text()}`.slice(0, 500);
+  const response = `${res.status} ${await res.text()}`.slice(0, 500);
+  if (!res.ok) throw new SmsGatewayError(`SMS provider returned HTTP ${res.status}.`, true);
+  return response;
 }

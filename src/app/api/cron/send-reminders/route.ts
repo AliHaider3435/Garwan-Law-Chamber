@@ -3,7 +3,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { fromRow } from '@/lib/mapping';
 import { buildReminders } from '@/lib/reminders';
-import { sendSms } from '@/lib/sms';
+import { isSmsConfigured, sendSms, SmsGatewayError } from '@/lib/sms';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,6 +15,7 @@ export async function GET(req: Request) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return new Response('Supabase env vars missing', { status: 500 });
+  if (!isSmsConfigured()) return new Response('SMS provider is not configured', { status: 503 });
   const db = createClient(url, key);
 
   // Tomorrow's date in Pakistan time, as YYYY-MM-DD
@@ -25,7 +26,10 @@ export async function GET(req: Request) {
     db.from('associates').select('*'),
     db.from('settings').select('value').eq('key', 'advocate_phone').maybeSingle(),
   ]);
-  if (c.error || a.error) return new Response((c.error || a.error)!.message, { status: 500 });
+  if (c.error || a.error || s.error) {
+    console.error('Reminder data could not be loaded:', c.error || a.error || s.error);
+    return new Response('Reminder data could not be loaded', { status: 500 });
+  }
 
   const advocate = (s.data as any)?.value || process.env.ADVOCATE_PHONE || '';
   const assoc = (a.data ?? []).map((x: any) => ({ id: x.id, name: x.name, phone: x.phone ?? '' }));
@@ -38,16 +42,35 @@ export async function GET(req: Request) {
     const ins = await db.from('reminder_log').insert({
       case_id: r.caseId, hearing_date: date, phone: r.num, recipient: r.who, body: r.text,
     });
-    if (ins.error) { skipped++; continue; }
+    if (ins.error) {
+      if (ins.error.code === '23505') skipped++;
+      else {
+        failed++;
+        console.error('Reminder attempt could not be recorded:', ins.error);
+      }
+      continue;
+    }
     try {
       const res = await sendSms(r.num, r.text);
-      await db.from('reminder_log').update({ provider_response: res })
+      const saved = await db.from('reminder_log').update({ provider_response: res })
         .match({ case_id: r.caseId, hearing_date: date, phone: r.num });
-      sent++;
+      if (saved.error) {
+        failed++;
+        console.error('Reminder delivery was not logged:', saved.error);
+      } else {
+        sent++;
+      }
     } catch (e) {
       failed++;
-      await db.from('reminder_log').update({ provider_response: 'ERROR: ' + (e as Error).message })
+      const failure = e instanceof Error ? e.message : 'Unknown SMS delivery error.';
+      const saved = await db.from('reminder_log').update({ provider_response: 'ERROR: ' + failure })
         .match({ case_id: r.caseId, hearing_date: date, phone: r.num });
+      if (saved.error) console.error('Reminder failure was not logged:', saved.error);
+      if (e instanceof SmsGatewayError && e.rejected) {
+        const removed = await db.from('reminder_log').delete()
+          .match({ case_id: r.caseId, hearing_date: date, phone: r.num });
+        if (removed.error) console.error('Rejected reminder reservation could not be released:', removed.error);
+      }
     }
   }
   return Response.json({ date, sent, skipped, failed });

@@ -50,6 +50,7 @@ export interface LogEntry {
   to: string;
   num: string;
   t: string;
+  caseId?: string;
 }
 
 export interface ChamberData {

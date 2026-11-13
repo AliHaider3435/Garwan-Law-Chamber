@@ -57,10 +57,15 @@ create table cases (
   client_phone text,
   opposing_party text,
   case_type text,
+  type_other text,
   fir_no text,
   police_station text,
+  code_station text,
+  district text,
+  tehsil text,
   sections text,
   stage text,
+  stage_other text,
   status text not null default 'active' check (status in ('active','decided')),
   next_hearing date,          -- active cases
   decided_on date,            -- decided cases

@@ -1,8 +1,11 @@
 import { Associate, Case, ChamberData, LogEntry, User } from './types';
-import { fromRow, toRow } from './mapping';
+import { fromRow } from './mapping';
 import { iso } from './dates';
 import { serviceDb } from './server-db';
 import { hashPassword, isPasswordHash, verifyPassword } from './password';
+import { NotFoundError } from './errors';
+import { saveCaseAtomically } from './case-persistence';
+import { restrictChamberData } from './data-access';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const fail = (e: { message: string } | null) => { if (e) throw new Error(e.message); };
@@ -70,11 +73,21 @@ export async function loadChamber(actor: User): Promise<ChamberData> {
   const caseIds = (caseRows ?? []).map((x: any) => x.id as string);
 
   const [a, s, u] = await Promise.all([
-    db.from('associates').select('*').order('name'),
-    db.from('settings').select('value').eq('key', 'advocate_phone').maybeSingle(),
-    db.from('chamber_users')
-      .select('id, username, email, name, role, associate_id, created_at, session_version')
-      .order('created_at', { ascending: true }),
+    actor.role === 'superadmin'
+      ? db.from('associates').select('*').order('name')
+      : actor.associateId
+        ? db.from('associates').select('id, name').eq('id', actor.associateId).order('name')
+        : Promise.resolve({ data: [], error: null }),
+    actor.role === 'superadmin'
+      ? db.from('settings').select('value').eq('key', 'advocate_phone').maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+    actor.role === 'associate'
+      ? db.from('chamber_users')
+        .select('id, username, email, name, role, associate_id, created_at, session_version')
+        .eq('id', actor.id)
+      : db.from('chamber_users')
+        .select('id, username, email, name, role, associate_id, created_at, session_version')
+        .order('created_at', { ascending: true }),
   ]);
   fail(a.error); fail(s.error); fail(u.error);
 
@@ -90,23 +103,21 @@ export async function loadChamber(actor: User): Promise<ChamberData> {
     logRows = data ?? [];
   }
 
-  let usersList: User[] = (u.data ?? []).map(mapUser);
-  if (actor.role !== 'superadmin') {
-    usersList = usersList.filter((x) => x.id === actor.id);
-  }
+  const usersList: User[] = (u.data ?? []).map(mapUser);
 
-  return {
+  return restrictChamberData({
     cases: (caseRows ?? []).map(fromRow),
-    assoc: (a.data ?? []).map((x: any) => ({ id: x.id, name: x.name, phone: x.phone ?? '' })),
+    assoc: (a.data ?? []).map((x: any) => ({ id: x.id, name: x.name, phone: actor.role === 'superadmin' ? x.phone ?? '' : '' })),
     users: usersList,
-    phone: (s.data as any)?.value ?? '',
+    phone: actor.role === 'superadmin' ? (s.data as any)?.value ?? '' : '',
     log: logRows.map((x: any) => ({
       key: String(x.id),
       to: x.recipient ?? '',
       num: x.phone,
       t: new Date(x.sent_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }),
+      caseId: x.case_id ?? undefined,
     })),
-  };
+  }, actor);
 }
 
 export async function getCaseById(id: string): Promise<Case | null> {
@@ -118,29 +129,14 @@ export async function getCaseById(id: string): Promise<Case | null> {
 }
 
 export async function saveCase(c: Case): Promise<Case> {
-  const db = serviceDb();
-  let id = c.id;
-  if (id) {
-    const { error } = await db.from('cases').update(toRow(c)).eq('id', id);
-    fail(error);
-  } else {
-    const { data, error } = await db.from('cases').insert(toRow(c)).select('id').single();
-    fail(error);
-    id = (data as any).id as string;
-  }
-  const del = await db.from('case_associates').delete().eq('case_id', id);
-  fail(del.error);
-  if (c.assoc.length) {
-    const ins = await db.from('case_associates').insert(c.assoc.map((a) => ({ case_id: id, associate_id: a })));
-    fail(ins.error);
-  }
-  return { ...c, id };
+  return saveCaseAtomically(serviceDb(), c);
 }
 
 export async function deleteCase(id: string) {
   const db = serviceDb();
-  const { error } = await db.from('cases').delete().eq('id', id);
+  const { data, error } = await db.from('cases').delete().eq('id', id).select('id').maybeSingle();
   fail(error);
+  if (!data) throw new NotFoundError('Case not found.');
 }
 
 export async function addAssociate(a: Omit<Associate, 'id'>): Promise<Associate> {
@@ -152,8 +148,9 @@ export async function addAssociate(a: Omit<Associate, 'id'>): Promise<Associate>
 
 export async function removeAssociate(id: string) {
   const db = serviceDb();
-  const { error } = await db.from('associates').delete().eq('id', id);
+  const { data, error } = await db.from('associates').delete().eq('id', id).select('id').maybeSingle();
   fail(error);
+  if (!data) throw new NotFoundError('Associate not found.');
 }
 
 export async function setPhone(p: string) {
@@ -175,7 +172,7 @@ export async function saveUser(u: User): Promise<User> {
   const db = serviceDb();
   const row: Record<string, string | number | null> = {
     username: u.username.trim().toLowerCase(),
-    email: u.email.trim().toLowerCase(),
+    email: u.email.trim().toLowerCase() || null,
     name: u.name,
     role: u.role,
     associate_id: u.associateId || null,
@@ -206,8 +203,9 @@ export async function saveUser(u: User): Promise<User> {
 
 export async function deleteUser(id: string) {
   const db = serviceDb();
-  const { error } = await db.from('chamber_users').delete().eq('id', id);
+  const { data, error } = await db.from('chamber_users').delete().eq('id', id).select('id').maybeSingle();
   fail(error);
+  if (!data) throw new NotFoundError('User not found.');
 }
 
 export async function verifyUserPassword(userId: string, password: string) {

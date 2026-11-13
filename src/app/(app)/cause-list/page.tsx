@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { D1, addDays, fmt, iso, today } from '@/lib/dates';
 import { useStore } from '@/lib/store';
+import { casesForDate } from '@/lib/case-list';
 
 export default function CauseList() {
   const { visibleCases, openCase, currentUser } = useStore();
@@ -32,7 +33,7 @@ export default function CauseList() {
       <div className="pn">
         {days.map((d) => {
           const k = iso(d);
-          const cs = visibleCases.filter((c) => c.status === 'active' && c.next === k);
+          const cs = casesForDate(visibleCases, k);
           return (
             <div key={k} className={'dy' + (k === today() ? ' now' : '')}>
               <div className="dd"><b>{fmt(k, { weekday: 'long' })}</b><span>{fmt(k, short)}</span></div>

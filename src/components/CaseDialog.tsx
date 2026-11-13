@@ -189,8 +189,6 @@ function CaseForm({ initial }: { initial: Case | null }) {
 
       {/* Client name + phone */}
       <div className="g2">{input('Client name', 'clientName')}{input('Client phone', 'clientPhone', 'tel', '03xx xxxxxxx')}</div>
-
-      {/* Opposing + Case type */}
       <div className="g2">
         {input('Opposing party', 'opposing')}
         <label>Case type
@@ -199,7 +197,6 @@ function CaseForm({ initial }: { initial: Case | null }) {
           </select>
         </label>
       </div>
-
       {/* "Other" free-text field for case type */}
       {f.type === 'Other' && (
         <label>Specify case type
@@ -229,7 +226,6 @@ function CaseForm({ initial }: { initial: Case | null }) {
           <option value="decided">Decided</option>
         </select>
       </label>
-
       {f.status === 'active'
         ? input('Next hearing', 'next', 'date')
         : <div className="g2">{input('Decision date', 'decidedOn', 'date')}{select('Outcome', 'outcome', OUTCOMES)}</div>}

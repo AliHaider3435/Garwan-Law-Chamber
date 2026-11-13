@@ -17,6 +17,7 @@ interface Store {
   dlg: { open: boolean; c: Case | null };
   passDlgOpen: boolean;
   signIn(identifier: string, password: string): Promise<string | null>;
+  signInDemo(userId: string): Promise<void>;
   signOut(): Promise<void>;
   openCase(c: Case | null): void;
   closeCase(): void;
@@ -216,35 +217,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         await refresh();
         return null;
       }
+      return process.env.NODE_ENV === 'production'
+        ? 'Shared database is not configured. Contact the site administrator.'
+        : 'Choose a local demo account to sign in.';
+    },
 
-      const idTrim = identifier.trim().toLowerCase();
-      let userPool = users;
-      if (!userPool.length) {
-        const d = await backend.load();
-        userPool = d.users;
-        setUsers(d.users);
+    async signInDemo(userId: string) {
+      if (LIVE || process.env.NODE_ENV === 'production') {
+        throw new Error('Local demo sign-in is disabled.');
       }
-
-      const match = userPool.find(
-        (u) => u.username.toLowerCase() === idTrim || u.email.toLowerCase() === idTrim
-      );
-
-      if (!match) {
-        return 'No user found with that username or email.';
-      }
-
-      if (match.password !== password) {
-        return 'Incorrect password.';
-      }
-
-      try {
-        localStorage.setItem(AUTH_KEY, '1');
-        localStorage.setItem(USER_KEY, match.id);
-      } catch {}
-
-      setCurrentUser(match);
+      const data = await backend.load();
+      const user = data.users.find((item) => item.id === userId);
+      if (!user) throw new Error('Demo account not found.');
+      localStorage.setItem(AUTH_KEY, '1');
+      localStorage.setItem(USER_KEY, user.id);
+      setCurrentUser(user);
       setAuthed(true);
-      return null;
     },
 
     async signOut() {

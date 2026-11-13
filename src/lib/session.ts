@@ -23,7 +23,7 @@ export async function setSession(userId: string, sessionVersion: number) {
   const exp = Date.now() + MAX_AGE * 1000;
   const payload = Buffer.from(JSON.stringify({ userId, sessionVersion, exp })).toString('base64url');
   const value = `${payload}.${sign(payload)}`;
-  cookies().set(COOKIE, value, {
+  (await cookies()).set(COOKIE, value, {
     httpOnly: true,
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
@@ -33,7 +33,7 @@ export async function setSession(userId: string, sessionVersion: number) {
 }
 
 export async function clearSession() {
-  cookies().set(COOKIE, '', {
+  (await cookies()).set(COOKIE, '', {
     httpOnly: true,
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
@@ -43,7 +43,7 @@ export async function clearSession() {
 }
 
 export async function readSession(): Promise<SessionClaims | null> {
-  const raw = cookies().get(COOKIE)?.value;
+  const raw = (await cookies()).get(COOKIE)?.value;
   if (!raw) return null;
   const dot = raw.lastIndexOf('.');
   if (dot < 0) return null;

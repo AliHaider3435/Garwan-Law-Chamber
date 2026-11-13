@@ -10,12 +10,13 @@ weekly cause list, associates, and SMS hearing reminders (sent the evening befor
     npm install
     npm run dev
 
-Open http://localhost:3000. Without Supabase configuration, local development uses sample accounts and browser-only
-storage. This demo mode is disabled in production; configure the shared Supabase database before deploying.
+Open http://localhost:3000. Without Supabase configuration, local development uses selectable sample accounts and
+browser-only storage. Demo accounts do not use passwords, and this mode is disabled in production; configure the
+shared Supabase database before deploying.
 
 ## 2. Go live with Supabase
 
-1. Create a Supabase project and run `supabase/schema.sql` in its SQL editor.
+1. For a new Supabase project, run `supabase/schema.sql`, then apply the migrations in `supabase/migrations`. For an existing project, do not rerun the schema file; review and apply only approved forward-only migrations.
 2. Add these environment variables in Vercel (and `.env.local` for local live-mode testing):
    - `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` (Project settings > API)
    - `SUPABASE_SERVICE_ROLE_KEY` (server only; never expose it in the browser)
@@ -31,6 +32,19 @@ storage. This demo mode is disabled in production; configure the shared Supabase
 
 Do not use local demo mode for real client data. Keep the Supabase service-role key and setup secret private.
 A deployment using the Vercel-provided `*.vercel.app` address receives HTTPS automatically.
+
+Case location fields are independent: `station` maps to `police_station`, while `codeStation` maps to
+`code_station`. The additive case-metadata migration leaves all existing values untouched and nullable fields
+unpopulated; it does not infer a station code from the station name.
+
+For an existing deployment, back up the project, verify the project reference, apply the reviewed migration in
+`supabase/migrations` before deploying application code, then confirm the case count and exercise reads/CRUD in a
+non-production environment. If application rollback is needed, redeploy the previous app revision and leave the
+additive columns, functions, and rate-limit table in place; do not drop production schema objects.
+
+## QA tests
+
+Run `npm test` with Node.js 22.6 or newer. These tests use in-memory fixtures and do not connect to Supabase.
 
 ## 3. SMS reminders
 

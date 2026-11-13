@@ -53,7 +53,6 @@ function seed(): Data {
       id: 'u-superadmin',
       username: 'superadmin',
       email: 'admin@garwanlaw.com',
-      password: 'admin123',
       name: 'Maher Mehtab Hassan Garwan',
       role: 'superadmin',
       createdAt: '2026-01-01',
@@ -62,7 +61,6 @@ function seed(): Data {
       id: 'u-usman',
       username: 'usman',
       email: 'usman@garwanlaw.com',
-      password: 'usman123',
       name: 'Adv. Usman Tariq',
       role: 'associate',
       associateId: 'a1',
@@ -72,7 +70,6 @@ function seed(): Data {
       id: 'u-hina',
       username: 'hina',
       email: 'hina@garwanlaw.com',
-      password: 'hina123',
       name: 'Adv. Hina Malik',
       role: 'associate',
       associateId: 'a2',
@@ -107,15 +104,22 @@ function read(): Data {
     if (s) {
       const data = JSON.parse(s) as Data;
       let migratedOutcome = false;
+      let removedPlaintextPasswords = false;
       data.cases = (data.cases ?? []).map((c) => {
         if (c.outcome?.trim().toLowerCase() !== 'sentence reduced') return c;
         migratedOutcome = true;
         return { ...c, outcome: 'Convicted' };
       });
+      data.users = (data.users ?? []).map((user) => {
+        if (user.password === undefined) return user;
+        const { password: _password, ...safeUser } = user;
+        removedPlaintextPasswords = true;
+        return safeUser;
+      });
       if (!data.users || data.users.length === 0) {
         data.users = seed().users;
         write(data);
-      } else if (migratedOutcome) {
+      } else if (migratedOutcome || removedPlaintextPasswords) {
         write(data);
       }
       return data;
@@ -171,7 +175,7 @@ export const localBackend: Backend = {
   async saveUser(u) {
     const d = read();
     const id = u.id || ('u-' + Date.now());
-    const saved: User = { ...u, id, createdAt: u.createdAt || iso(new Date()) };
+    const saved: User = { ...u, password: undefined, id, createdAt: u.createdAt || iso(new Date()) };
     d.users = u.id ? d.users.map((x) => (x.id === u.id ? saved : x)) : [saved, ...d.users];
     write(d);
     return saved;
@@ -181,10 +185,8 @@ export const localBackend: Backend = {
     d.users = d.users.filter((x) => x.id !== id);
     write(d);
   },
-  async updatePassword(userId, newPass) {
-    const d = read();
-    d.users = d.users.map((u) => (u.id === userId ? { ...u, password: newPass } : u));
-    write(d);
+  async updatePassword() {
+    throw new Error('Local demo accounts do not use passwords.');
   },
 };
 

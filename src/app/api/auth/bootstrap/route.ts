@@ -4,6 +4,7 @@ import { getUserById } from '@/lib/chamber-ops';
 import { hashPassword } from '@/lib/password';
 import { serviceDb } from '@/lib/server-db';
 import { setSession } from '@/lib/session';
+import { readJsonBody, RequestBodyError } from '@/lib/request-body';
 
 export async function POST(req: Request) {
   const setupSecret = process.env.INITIAL_ADMIN_SETUP_SECRET;
@@ -23,11 +24,22 @@ export async function POST(req: Request) {
   }
 
   try {
-    const body = await req.json();
-    const username = String(body.username ?? '').trim().toLowerCase();
-    const email = String(body.email ?? '').trim().toLowerCase();
-    const name = String(body.name ?? '').trim();
-    const password = String(body.password ?? '');
+    const body = await readJsonBody(req, 8 * 1024);
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      return NextResponse.json({ error: 'Invalid request payload.' }, { status: 400 });
+    }
+    const input = body as Record<string, unknown>;
+    const keys = Object.keys(input);
+    if (keys.some((key) => !['username', 'email', 'name', 'password'].includes(key))) {
+      return NextResponse.json({ error: 'Request contains unsupported fields.' }, { status: 400 });
+    }
+    if (['username', 'email', 'name', 'password'].some((key) => typeof input[key] !== 'string')) {
+      return NextResponse.json({ error: 'Enter valid username, email, name, and password fields.' }, { status: 400 });
+    }
+    const username = (input.username as string).trim().toLowerCase();
+    const email = (input.email as string).trim().toLowerCase();
+    const name = (input.name as string).trim();
+    const password = input.password as string;
 
     if (!/^[a-z0-9_.-]{3,40}$/.test(username)) {
       return NextResponse.json({ error: 'Username must be 3-40 letters, numbers, dots, dashes or underscores.' }, { status: 400 });
@@ -58,6 +70,9 @@ export async function POST(req: Request) {
     await setSession(user.id, user.sessionVersion ?? 1);
     return NextResponse.json({ user }, { status: 201 });
   } catch (error) {
+    if (error instanceof RequestBodyError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
 }

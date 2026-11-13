@@ -1,4 +1,4 @@
-import { Case } from './types';
+import type { Case } from './types';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export const fromRow = (r: any): Case => ({
